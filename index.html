@@ -2348,7 +2348,9 @@ var Demo = {
     setText("demo-play", "Stop", "とめる"); applyLang();
     this.timer = setInterval(function () {
       if (!walk || !Loc.position) return Demo.stopWalk();
-      var step = 80 * Demo.speed * (250 / 60000);        // 徒歩80m/分 × 倍率
+      // 直線上を進むので、道のりの分だけ遅く進める。こうしないと
+      // コンパスの「徒歩◯分」が示した時間より早く着いてしまい、数字が嘘になる。
+      var step = (CONFIG.WALK_SPEED / CONFIG.DETOUR) * Demo.speed * (250 / 60000);
       var left = distanceM(Loc.position, walk.dest);
       var brg = bearingDeg(Loc.position, walk.dest);
       Heading.value = brg;                                // 針が進行方向を向く
@@ -3408,7 +3410,7 @@ function refreshHours() {
 }
 function selectedMinutes() {
   var b = document.querySelector('#seg button[aria-pressed="true"]');
-  return b ? parseInt(b.textContent, 10) : 30;
+  return b ? parseInt(b.textContent, 10) : 45;
 }
 /* 混雑回避はもう選択肢ではない。このアプリはそのためにある。 */
 function avoidOn() { return true; }
@@ -3468,7 +3470,7 @@ function startWalk() {
 
   // iOS の許可要求はユーザー操作の中で。ここはボタン押下の同期的な続き。
   Heading.start(function () { drawNav(); });
-  Loc.start(function () { placeMe(); drawNav(); checkArrival(); },
+  Loc.start(function () { placeMe(); refreshPicks(); drawNav(); checkArrival(); },
             function (e) { var m = Loc.message(e); toast(m[0], m[1]); });
 
   var origin = { lat: Loc.position.lat, lon: Loc.position.lon };
@@ -3508,10 +3510,9 @@ function showPicks(list) {
   ul.innerHTML = "";
   var usedTeasers = {};
 
+  pending.list = list;
+
   list.forEach(function (poi) {
-    var d = distanceM(pending.origin, poi);
-    var mins = Math.max(1, Math.round(d * CONFIG.DETOUR / CONFIG.WALK_SPEED));
-    var back = new Date(Date.now() + (mins * 2 + 10) * 60000);
     var tea = teaserOf(poi, usedTeasers);
 
     var li = document.createElement("li");
@@ -3544,11 +3545,8 @@ function showPicks(list) {
     t.textContent = lang === "ja" ? tea[1] : tea[0];
     var m = document.createElement("p");
     m.className = "pick-meta";
-    var hh = back.getHours(), mm = ("0" + back.getMinutes()).slice(-2);
-    m.setAttribute("data-en", fmtDist(d) + " · " + mins + " min walk · back by " + hh + ":" + mm);
-    m.setAttribute("data-ja", fmtDist(d) + "・徒歩" + mins + "分・" + hh + "時" + mm + "分には戻れます");
-    m.textContent = lang === "ja" ? m.getAttribute("data-ja") : m.getAttribute("data-en");
     body.appendChild(t); body.appendChild(m);
+    metaOf(m, poi);
 
     btn.appendChild(thumb); btn.appendChild(body);
     btn.addEventListener("click", function () { choosePick(poi); });
@@ -3575,6 +3573,27 @@ function showPicks(list) {
   applyLang();
 }
 
+/* カードの距離と徒歩分。**いまの現在地から**出す。
+   測位は歩いているあいだも直っていくので、押した瞬間の位置で焼き付けると
+   コンパスの残り時間と食い違う。同じ値から作れば、必ず一致する。 */
+function metaOf(el, poi) {
+  var here = Loc.position || pending.origin;
+  var d = distanceM(here, poi);
+  var mins = Math.max(1, Math.round(d * CONFIG.DETOUR / CONFIG.WALK_SPEED));
+  var back = new Date(Date.now() + (mins * 2 + 10) * 60000);
+  var hh = back.getHours(), mm = ("0" + back.getMinutes()).slice(-2);
+  el.setAttribute("data-en", fmtDist(d) + " \u00b7 " + mins + " min walk \u00b7 back by " + hh + ":" + mm);
+  el.setAttribute("data-ja", fmtDist(d) + "\u30fb徒歩" + mins + "分\u30fb" + hh + "時" + mm + "分には戻れます");
+  el.textContent = lang === "ja" ? el.getAttribute("data-ja") : el.getAttribute("data-en");
+}
+
+/* 測位が動いたら、出しているカードの数字も動かす。 */
+function refreshPicks() {
+  if (!pending || !pending.list || $("picks").hidden) return;
+  var els = $("pick-list").querySelectorAll(".pick-meta");
+  for (var i = 0; i < els.length && i < pending.list.length; i++) metaOf(els[i], pending.list[i]);
+}
+
 /* いま条件を満たしている候補の数。3択の下に出す。 */
 function countable(pois, ctx) {
   var n = 0;
@@ -3599,7 +3618,8 @@ function fmtDist(m) {
 
 function choosePick(poi) {
   $("picks").hidden = true;
-  beginNav(pending.origin, poi, pending.minutes, pending.moods, pending.ctx.avoid);
+  var origin = Loc.position || pending.origin;   // 選んだ瞬間の位置から測る
+  beginNav(origin, poi, pending.minutes, pending.moods, pending.ctx.avoid);
 }
 
 function redrawPicks() {
