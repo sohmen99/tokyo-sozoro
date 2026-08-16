@@ -3472,9 +3472,14 @@ function startWalk() {
   $("drawing").hidden = false;
 
   // iOS の許可要求はユーザー操作の中で。ここはボタン押下の同期的な続き。
-  Heading.start(function () { drawNav(); });
-  Loc.start(function () { placeMe(); refreshPicks(); drawNav(); checkArrival(); },
-            function (e) { var m = Loc.message(e); toast(m[0], m[1]); });
+  // デモ中は実測を起こさない。ここで watchPosition を始めてしまうと、
+  // デモで置いた地点が実際の現在地に上書きされ、抽選した場所と
+  // コンパスが測る場所が別になる。
+  if (!Demo.on) {
+    Heading.start(function () { drawNav(); });
+    Loc.start(function () { placeMe(); refreshPicks(); drawNav(); checkArrival(); },
+              function (e) { var m = Loc.message(e); toast(m[0], m[1]); });
+  }
 
   var origin = { lat: Loc.position.lat, lon: Loc.position.lon };
   var ctx = {
@@ -3499,7 +3504,7 @@ function startWalk() {
     main.classList.remove("compass-on");
     toast("No candidate in that range. Try another mood or duration.",
           "その条件だと候補がありませんでした。気分か時間を変えてお試しください。");
-    Loc.stop(); Heading.stop();
+    if (!Demo.on) { Loc.stop(); Heading.stop(); }
   });
 }
 
@@ -3644,7 +3649,7 @@ function cancelPicks() {
   $("picks").hidden = true;
   $("drawing").hidden = true;
   main.classList.remove("compass-on");
-  Loc.stop(); Heading.stop();
+  if (!Demo.on) { Loc.stop(); Heading.stop(); }
   pending = null;
 }
 
@@ -3748,7 +3753,7 @@ function arrive() {
   Demo.stopWalk();
   var w = walk;
   walk = null;
-  Loc.stop(); Heading.stop();
+  if (!Demo.on) { Loc.stop(); Heading.stop(); }
 
   var straight = w.startDist;
   var walked = straight * CONFIG.DETOUR;
@@ -4017,10 +4022,14 @@ $("btn-start").addEventListener("click", function () { closePops(); startWalk();
 
 $("btn-back").addEventListener("click", function () {
   if (walk && !confirm(lang === "ja" ? "この散歩をやめますか？" : "Give up on this walk?")) return;
-  walk = null; Loc.stop(); Heading.stop();
+  walk = null;
   main.classList.remove("compass-on");
   $("hint-card").classList.remove("is-open");
   $("drawing").hidden = true;
+  $("picks").hidden = true;
+  pending = null;
+  if (Demo.on) { setLoc("ready"); placeMe(); return; }   // デモの立ち位置は保つ
+  Loc.stop(); Heading.stop();
   setLoc("wait");
   Loc.start(function () { setLoc("ready"); placeMe(); },
             function (e) { setLoc("error", Loc.message(e)); });
