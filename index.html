@@ -2309,6 +2309,9 @@ var Demo = {
 
   /** 地図の上に立つ。 */
   place: function (lat, lon) {
+    // 立ち位置を変えたら、その前に引いた3択はもう別の場所の話になる。
+    // 数字だけ書き換えると「45分で引いたのに12分」になるので、引き直させる。
+    if (!$("picks").hidden) { cancelPicks(); toast("Moved. Draw again from here.", "立ち位置が変わりました。ここから引き直してください。"); }
     Loc.position = { lat: lat, lon: lon };
     Loc.accuracy = 8;
     placeMe(); drawNav(); checkArrival(); this.sync();
@@ -3577,7 +3580,8 @@ function showPicks(list) {
    測位は歩いているあいだも直っていくので、押した瞬間の位置で焼き付けると
    コンパスの残り時間と食い違う。同じ値から作れば、必ず一致する。 */
 function metaOf(el, poi) {
-  var here = Loc.position || pending.origin;
+  // デモ中はわざと置いた位置なので動かさない。抽選した地点のまま測る。
+  var here = Demo.on ? pending.origin : (Loc.position || pending.origin);
   var d = distanceM(here, poi);
   var mins = Math.max(1, Math.round(d * CONFIG.DETOUR / CONFIG.WALK_SPEED));
   var back = new Date(Date.now() + (mins * 2 + 10) * 60000);
@@ -3589,6 +3593,7 @@ function metaOf(el, poi) {
 
 /* 測位が動いたら、出しているカードの数字も動かす。 */
 function refreshPicks() {
+  if (Demo.on) return;                      // デモ中は数字を動かさない
   if (!pending || !pending.list || $("picks").hidden) return;
   var els = $("pick-list").querySelectorAll(".pick-meta");
   for (var i = 0; i < els.length && i < pending.list.length; i++) metaOf(els[i], pending.list[i]);
@@ -3618,7 +3623,8 @@ function fmtDist(m) {
 
 function choosePick(poi) {
   $("picks").hidden = true;
-  var origin = Loc.position || pending.origin;   // 選んだ瞬間の位置から測る
+  // 実際に歩くときは選んだ瞬間の位置から。デモは置いた地点から。
+  var origin = Demo.on ? pending.origin : (Loc.position || pending.origin);
   beginNav(origin, poi, pending.minutes, pending.moods, pending.ctx.avoid);
 }
 
