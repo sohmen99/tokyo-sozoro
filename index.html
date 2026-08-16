@@ -1301,14 +1301,39 @@
   .seal.on .nm { color: var(--washi); }
   .seal.on .cd { color: #8E96A4; }
   .seal.is-new { animation: sealpop .5s cubic-bezier(.32,.72,0,1); }
-  /* 到着したときの写真。無ければ枠ごと出さない。 */
-  .res-photo { margin: 12px 0 0; }
-  .res-photo img {
+  /* 到着したときの写真。無ければ枠ごと出さない。
+     見出しの絵の .res-photo とは別物なので、名前を分けてある。 */
+  .res-shot { margin: 12px 0 0; }
+  .res-shot img {
     display: block; width: 100%; max-height: 210px; object-fit: cover;
-    border-radius: 12px; background: var(--map-block);
+    border-radius: 10px; background: var(--sumi-2);
   }
-  .res-photo figcaption { margin-top: 5px; font-size: 11px; color: var(--muted); }
+  .res-shot figcaption { margin-top: 5px; font-size: 10.5px; color: #6E7787; line-height: 1.6; }
   #res-about { margin: 10px 0 0; font-size: 13.5px; line-height: 1.75; }
+
+  /* ── この近くにあるもの ─────────────────────────────────────
+     行き先は伏せたが、着いてしまえば伏せる理由はない。まわりを見せる。 */
+  .res-near { margin: 18px 0 0; }
+  .res-near h4 {
+    margin: 0 0 10px; font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: #6E7787;
+  }
+  .res-near ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px;
+                 background: var(--hairline-dk); border-radius: var(--r); overflow: hidden; }
+  .res-near li { background: var(--sumi); }
+  .res-near a {
+    display: grid; grid-template-columns: 26px 1fr auto; gap: 11px; align-items: center;
+    padding: 12px 14px; text-decoration: none; color: inherit;
+  }
+  .res-near a:hover, .res-near a:focus-visible { background: var(--sumi-2); outline: none; }
+  .res-near .ico { width: 20px; height: 20px; color: #6E7787; }
+  .res-near .nm { min-width: 0; }
+  .res-near .nm b { display: block; font-size: 13.5px; font-weight: 600; color: var(--white);
+                    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .res-near .nm span { font-size: 11px; color: #6E7787; }
+  .res-near .dm { font-family: var(--font-mono); font-size: 11px; color: #99A1AE;
+                  font-variant-numeric: tabular-nums; }
+  .res-near .note { margin: 8px 0 0; padding: 0; border: 0; font-size: 10.5px; color: #5F6775; }
 
   @keyframes sealpop { from { transform: scale(.86); opacity: .4 } }
   @media (prefers-reduced-motion: reduce) { .seal.is-new { animation: none } }
@@ -1950,17 +1975,26 @@
             <div class="res-body">
               <h3 id="res-name">—</h3>
               <p class="where" id="res-where" data-en="—" data-ja="—">—</p>
-              <figure class="res-photo" id="res-photo" hidden>
+              <figure class="res-shot" id="res-photo" hidden>
                 <img id="res-img" alt="" loading="lazy">
                 <figcaption id="res-img-credit"></figcaption>
               </figure>
               <p id="res-about" hidden></p>
               <p id="res-desc" data-en="—" data-ja="—">—</p>
-              <a class="btn btn-quiet" id="res-map" href="#" target="_blank" rel="noopener" style="margin-top:12px" data-en="Check it on the map" data-ja="地図でたしかめる">地図でたしかめる</a>
+              <a class="btn btn-quiet" id="res-map" href="#" target="_blank" rel="noopener" style="margin-top:12px">
+                <svg width="16" height="16"><use href="#i-map"/></svg>
+                <span data-en="Open in OpenStreetMap" data-ja="OpenStreetMap でひらく">OpenStreetMap でひらく</span>
+              </a>
               <p class="res-sync" data-state="src"><span class="led"></span><span id="res-src" data-en="—" data-ja="—">—</span></p>
               <p class="res-sync" id="res-sync" data-state="pending"><span class="led"></span><span id="res-sync-text" data-en="—" data-ja="—">—</span></p>
             </div>
           </div>
+
+          <section class="res-near" id="res-near" hidden>
+            <h4 data-en="Also around here" data-ja="この近くには、こんな場所も">この近くには、こんな場所も</h4>
+            <ul id="res-near-list"></ul>
+            <p class="note" id="res-near-note" data-en="—" data-ja="—">—</p>
+          </section>
 
           <div class="res-stats">
             <div><div class="v" id="res-walked">—</div><div class="k" data-en="Walked" data-ja="歩いた">歩いた</div></div>
@@ -3816,6 +3850,8 @@ function arrive() {
   if (w.dest.description) { about.textContent = w.dest.description; about.hidden = false; }
   else { about.hidden = true; }
 
+  fillNearby(w.dest);
+
   var lab = SRC_LABEL[w.dest.src] || SRC_LABEL.osm;
   setText("res-src", "Source · " + lab[0], "出典 · " + lab[1]);
 
@@ -4100,6 +4136,83 @@ $("res-share").addEventListener("click", shareWalk);
 $("res-again").addEventListener("click", function () { newSeals = []; enterMap(); setSheet(true); });
 $("res-gallery").addEventListener("click", openGallery);
 $("res-home").addEventListener("click", function () { newSeals = []; Loc.stop(); showScreen("cover"); });
+
+/* 着いた場所のまわりに何があるか。行き先は伏せたが、着いてしまえば
+   伏せる理由はない。抽選と同じ候補地から、近い順に3つ。
+   通信は要らない。すでに手元にあるものだけで出す。 */
+var NEAR_RADIUS = 450;
+
+function fillNearby(dest) {
+  var box = $("res-near"), ul = $("res-near-list");
+  ul.innerHTML = "";
+  box.hidden = true;
+  if (!dest) return;
+
+  Sources.fetch(dest, NEAR_RADIUS, ["food", "culture", "green", "craft"]).then(function (all) {
+    var near = [];
+    for (var i = 0; i < all.length; i++) {
+      var p = all[i];
+      if (p.id === dest.id) continue;
+      var d = distanceM(dest, p);
+      if (d < 25 || d > NEAR_RADIUS) continue;      // 同じ建物は出さない
+      if (p.name === dest.name) continue;
+      near.push({ p: p, d: d });
+    }
+    near.sort(function (a, b) { return a.d - b.d; });
+
+    // 同じ種類ばかり並ぶと面白くないので、種類をばらけさせて3つ選ぶ。
+    // 同じ名前は落とす（同じ史跡の碑が何本も登録されていることがある）。
+    var picked = [], seenKind = {}, seenName = {};
+    for (var pass = 0; pass < 2 && picked.length < 3; pass++) {
+      for (var j = 0; j < near.length && picked.length < 3; j++) {
+        var n = near[j];
+        if (picked.indexOf(n) >= 0 || seenName[n.p.name]) continue;
+        if (pass === 0 && seenKind[n.p.kind]) continue;
+        seenKind[n.p.kind] = 1; seenName[n.p.name] = 1;
+        picked.push(n);
+      }
+    }
+    if (!picked.length) return;
+
+    picked.forEach(function (n) {
+      var li = document.createElement("li");
+      var a = document.createElement("a");
+      a.href = "https://www.openstreetmap.org/?mlat=" + n.p.lat + "&mlon=" + n.p.lon +
+               "#map=18/" + n.p.lat + "/" + n.p.lon;
+      a.target = "_blank"; a.rel = "noopener";
+
+      var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("class", "ico");
+      svg.setAttribute("aria-hidden", "true");
+      var use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+      use.setAttribute("href", "#" + (KIND_MARK[n.p.kind] || "i-pin"));
+      svg.appendChild(use);
+
+      var nm = document.createElement("span");
+      nm.className = "nm";
+      var b = document.createElement("b");
+      b.textContent = n.p.name;
+      var sub = document.createElement("span");
+      sub.textContent = (lang === "ja" ? n.p.kindJa : n.p.kindEn) || "";
+      nm.appendChild(b); nm.appendChild(sub);
+
+      var dm = document.createElement("span");
+      dm.className = "dm";
+      dm.textContent = Math.round(n.d) + "m";
+
+      a.appendChild(svg); a.appendChild(nm); a.appendChild(dm);
+      li.appendChild(a); ul.appendChild(li);
+    });
+
+    setText("res-near-note",
+      "Within " + NEAR_RADIUS + " m. Tap to open the map.",
+      "半径" + NEAR_RADIUS + "m。押すと地図がひらきます。");
+    box.hidden = false;
+    applyLang();
+  }).catch(function () { /* 出なくても到着画面は成立する */ });
+}
+
+var KIND_MARK = { culture: "i-temple", green: "i-park", craft: "i-craft", food: "i-food" };
 
 /* ════════════════════ 15.5 · 共有 ════════════════════
 
