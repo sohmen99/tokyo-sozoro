@@ -351,8 +351,11 @@
     position: absolute; top: 0; left: 0;
     width: 402px; height: 874px;
     transform-origin: 0 0;
-    will-change: transform;
   }
+  /* 拡大している間だけ合成レイヤーに載せる。ここを常時つけていると
+     SVG が 402×874 のまま焼かれ、そのラスタを引き伸ばすので寄ると荒れる。
+     外すとブラウザが今の倍率で描き直すので、止まった瞬間に輪郭が戻る。 */
+  .map-canvas.is-scaling { will-change: transform; }
   .map-canvas.is-flying { transition: transform .42s cubic-bezier(.32,.72,0,1); }
   .map-canvas > svg { display: block; width: 402px; height: 874px; }
 
@@ -1582,9 +1585,9 @@
               <div class="field">
                 <div class="field-head"><span class="label-mono" data-en="Walk for about" data-ja="歩く時間">Walk for about</span></div>
                 <div class="seg" id="seg">
-                  <button aria-pressed="false"><b>15</b> min</button>
-                  <button aria-pressed="true"><b>30</b> min</button>
-                  <button aria-pressed="false"><b>45</b> min</button>
+                  <button aria-pressed="false"><b>30</b> min</button>
+                  <button aria-pressed="true"><b>45</b> min</button>
+                  <button aria-pressed="false"><b>60</b> min</button>
                 </div>
               </div>
 
@@ -1864,7 +1867,7 @@
 var CONFIG = {
   WALK_SPEED: 80,        // m/分。不動産表記と同じ徒歩速度
   DETOUR: 1.3,           // 実際の道のりは直線距離の約1.3倍
-  BAND: 0.32,            // 距離帯の許容幅（目標距離の ±32%）
+  TOL_MIN: 7,            // 距離帯の許容幅。選んだ時間の ±この分数を1σとする
   ARRIVAL_M: 60,         // ここまで近づいたら到着とみなす
   MIN_M: 250,            // これより近い候補は散歩にならない
   HINTS: 2,              // ヒントの回数
@@ -2448,6 +2451,11 @@ var Draw = {
     return minutes * CONFIG.WALK_SPEED / CONFIG.DETOUR;   // 直線でこのくらい
   },
 
+  // 距離帯の許容幅。分で持っているので、どの所要時間でも同じ振り幅になる。
+  tolMetres: function () {
+    return CONFIG.TOL_MIN * CONFIG.WALK_SPEED / CONFIG.DETOUR;
+  },
+
   weight: function (poi, ctx) {
     var d = distanceM(ctx.origin, poi);
     if (d < CONFIG.MIN_M || d > ctx.max) return 0;
@@ -2456,7 +2464,9 @@ var Draw = {
     if (!isOpen(poi.kind, ctx.now)) return 0;          // 閉まっている種類は引かない
 
     // 1 · 選んだ時間に合う距離か（目標距離を中心にした山）
-    var off = (d - ctx.target) / (ctx.target * CONFIG.BAND);
+    //     許容は目標距離の割合ではなく「±何分」。60分を選んだ人の許容が
+    //     15分を選んだ人の4倍に広がってしまうのを避ける。
+    var off = (d - ctx.target) / ctx.tol;
     var band = Math.exp(-off * off);
 
     // 2 · 静けさ。混んでいる所は、そもそも引かない
@@ -2727,14 +2737,26 @@ function drawMap() {
   updateScale();
 }
 
+/* 倍率が動いている間だけ合成レイヤーに載せ、止まったら外して描き直させる。
+   平行移動だけのときは倍率が変わらないので、そのまま鮮明なまま動く。 */
+var settle = null;
+function scaling() {
+  canvas.classList.add("is-scaling");
+  clearTimeout(settle);
+  settle = setTimeout(function () { canvas.classList.remove("is-scaling"); }, 520);
+}
+
 function zoomAbout(nk, cx, cy) {
   nk = Math.min(MAX_K, Math.max(MIN_K, nk));
+  if (nk === k) return;
   var wx = (cx - tx) / k, wy = (cy - ty) / k;
   k = nk; tx = cx - wx * k; ty = cy - wy * k;
+  scaling();
   drawMap();
 }
 
 function flyTo(mx, my, nk, sx, sy) {
+  if (Math.min(MAX_K, Math.max(MIN_K, nk)) !== k) scaling();
   k = Math.min(MAX_K, Math.max(MIN_K, nk));
   tx = sx - mx * k; ty = sy - my * k;
   canvas.classList.add("is-flying");
@@ -3131,7 +3153,8 @@ function startWalk() {
 
   var minutes = selectedMinutes();
   var target = Draw.targetMetres(minutes);
-  var max = target * (1 + CONFIG.BAND * 1.6);
+  var tol = Draw.tolMetres();                 // ±7分ぶんの直線距離
+  var max = target + tol * 2.2;               // 2.2σ より外は実質引かれない
 
   main.classList.remove("detail-on");
   main.classList.add("compass-on");
@@ -3144,7 +3167,7 @@ function startWalk() {
 
   var origin = { lat: Loc.position.lat, lon: Loc.position.lon };
   var ctx = {
-    origin: origin, target: target, max: max, moods: moods,
+    origin: origin, target: target, tol: tol, max: max, moods: moods,
     avoid: avoidOn(), visited: Store.visitedIds(), now: new Date()
   };
 
