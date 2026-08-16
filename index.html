@@ -1123,6 +1123,60 @@
   @media (prefers-reduced-motion: reduce) { .drawing .ring { animation-duration: 3s } }
   .drawing p { margin: 0; font-size: 13px; letter-spacing: .06em; color: #C6CCD6; }
 
+  /* ── 三つの針路 ─────────────────────────────────────────────
+     抽選のあと、正体を伏せたまま3つ見せる。中身が空でも成立するように、
+     写真が無ければ気分の印に、伏せた一行が無ければ種別から組んだ文に落とす。 */
+  .picks {
+    position: absolute; inset: 0; z-index: 160;
+    display: flex; flex-direction: column;
+    background: rgba(20,23,28,0.93);
+    backdrop-filter: blur(6px);
+    color: var(--white);
+    padding: 28px 18px 18px;
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+  }
+  .picks[hidden] { display: none; }
+  .picks-head { display: grid; gap: 5px; margin-bottom: 16px; }
+  .picks-head .label-mono { color: var(--ai-light); }
+  .picks-head h3 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: .04em; }
+  .picks-head p { margin: 0; font-size: 12.5px; color: #A8B0BC; line-height: 1.7; }
+
+  .pick-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .pick {
+    width: 100%; display: grid; grid-template-columns: 84px 1fr; gap: 13px;
+    align-items: center; text-align: left;
+    padding: 11px; border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.13);
+    background: rgba(255,255,255,0.045);
+    color: inherit; font: inherit; cursor: pointer;
+    transition: border-color .16s, background .16s, transform .16s;
+  }
+  .pick:hover { border-color: var(--ai-light); background: rgba(255,255,255,0.08); }
+  .pick:active { transform: scale(.985); }
+  .pick:focus-visible { outline: 2px solid var(--ai-light); outline-offset: 2px; }
+  .pick-thumb {
+    width: 84px; height: 84px; border-radius: 10px; overflow: hidden;
+    display: grid; place-items: center; background: #2B313B;
+  }
+  /* 写真はぼかす。色と明るさだけ伝えて、正体は伝えない。 */
+  .pick-thumb img {
+    width: 100%; height: 100%; object-fit: cover;
+    filter: blur(11px) saturate(1.25); transform: scale(1.35);
+  }
+  .pick-thumb svg { width: 30px; height: 30px; color: rgba(255,255,255,0.42); }
+  .pick-body { display: grid; gap: 5px; min-width: 0; }
+  .pick-teaser { margin: 0; font-size: 14.5px; font-weight: 600; line-height: 1.55; }
+  .pick-meta {
+    margin: 0; font-size: 11.5px; color: #98A1AE; line-height: 1.6;
+    font-variant-numeric: tabular-nums;
+  }
+  .picks-foot { margin-top: 16px; display: grid; gap: 9px; }
+  .picks-note { margin: 0; font-size: 11px; color: #7E8794; text-align: center; }
+
+  /* ── 共有 ───────────────────────────────────────────────── */
+  .res-share { margin-top: 10px; }
+  #share-canvas { display: none; }
+
   /* 現在地が地図の外に出たとき */
   .me.is-off .me-dot { background: var(--muted); }
   .me.is-off .me-acc { display: none; }
@@ -1774,6 +1828,28 @@
             <p class="cmp-foot"><span class="dot"></span><span id="cmp-foot-text" data-en="—" data-ja="—">—</span></p>
           </div>
 
+          <canvas id="share-canvas" width="1080" height="1350" aria-hidden="true"></canvas>
+
+          <div class="picks" id="picks" hidden>
+            <div class="picks-head">
+              <span class="label-mono" data-en="Three courses" data-ja="みっつの針路">みっつの針路</span>
+              <h3 data-en="Pick one. It stays hidden." data-ja="ひとつ選んでください。">ひとつ選んでください。</h3>
+              <p id="picks-sub" data-en="—" data-ja="—">—</p>
+            </div>
+            <ul class="pick-list" id="pick-list"></ul>
+            <div class="picks-foot">
+              <button class="btn btn-quiet" id="picks-redraw">
+                <svg width="16" height="16"><use href="#i-dice"/></svg>
+                <span data-en="Draw again" data-ja="引き直す">引き直す</span>
+              </button>
+              <button class="btn btn-quiet" id="picks-cancel">
+                <svg width="16" height="16"><use href="#i-back"/></svg>
+                <span data-en="Back" data-ja="やめる">やめる</span>
+              </button>
+              <p class="picks-note" id="picks-note" data-en="—" data-ja="—">—</p>
+            </div>
+          </div>
+
           <div class="drawing" id="drawing" hidden>
             <div class="inner">
               <span class="ring"></span>
@@ -1841,6 +1917,10 @@
           </div>
 
           <div class="res-cta">
+            <button class="btn btn-primary" id="res-share">
+              <svg width="18" height="18"><use href="#i-seal"/></svg>
+              <span data-en="Share this walk" data-ja="この さんぽを 共有">この さんぽを 共有</span>
+            </button>
             <button class="btn btn-primary" id="res-again"><svg width="18" height="18"><use href="#i-dice"/></svg><span data-en="Walk again" data-ja="もう一回 あるく">もう一回 あるく</span></button>
             <div class="pair"><button class="btn btn-quiet" id="res-gallery"><svg width="16" height="16"><use href="#i-seal"/></svg><span data-en="See the collection" data-ja="あつめた印を見る">あつめた印を見る</span></button>
             <button class="btn btn-quiet" id="res-home"><svg width="16" height="16"><use href="#i-back"/></svg><span data-en="Back to the start" data-ja="最初にもどる">最初にもどる</span></button></div>
@@ -2589,6 +2669,19 @@ var Draw = {
     return band * quiet * outward * favour + 0.0001;
   },
 
+  /* 重みつきで n 件、重複なしに引く。1件ずつ引いては母集団から抜く。
+     argmax で上位3件を並べるのではないので、同じ条件でも毎回ちがう3枚が出る。 */
+  pickMany: function (pois, ctx, n) {
+    var pool = pois.slice(), out = [];
+    for (var i = 0; i < n; i++) {
+      var got = this.pick(pool, ctx);
+      if (!got) break;
+      out.push(got);
+      pool.splice(pool.indexOf(got), 1);
+    }
+    return out;
+  },
+
   pick: function (pois, ctx) {
     var scored = [], total = 0;
     for (var i = 0; i < pois.length; i++) {
@@ -2604,6 +2697,39 @@ var Draw = {
     return scored[scored.length - 1].poi;
   }
 };
+
+/* 伏せた一行。データベースに入っていればそれを使う。
+   無いときは種別から組む。同じ場所には必ず同じ文が当たるように、
+   名前から作った数で選ぶ。引き直すたびに文が変わると嘘くさくなる。 */
+var TEASER_FALLBACK = {
+  culture: [["A quiet precinct the guidebooks skip", "案内図には出てこない、静かな境内"],
+            ["Something old, still standing here", "古いものが、そのまま残っている場所"],
+            ["A gate, and no one behind it", "門の先に、人のいない場所がある"]],
+  green:   [["Somewhere to sit and not be hurried", "誰にも急かされずに座っていられる場所"],
+            ["Trees, and the sound of the street falling away", "木があって、通りの音が遠くなる場所"],
+            ["A bench, and time you did not plan", "ベンチと、予定していなかった時間"]],
+  craft:   [["A workshop you can see into from the street", "通りから中が見える仕事場"],
+            ["Someone is making something in there", "誰かが、何かを作っている場所"],
+            ["Hands that have done this for a long time", "長いあいだ続けてきた手つきがある"]],
+  food:    [["A small sign. The locals know it", "看板は小さい。近所の人が通っている"],
+            ["One street back from the crowd", "人通りから一本入ったところ"],
+            ["A light on in a narrow lane", "路地に灯りがともっている"]]
+};
+function teaserOf(poi, used) {
+  if (poi.teaser) return [poi.teaser, poi.teaser];
+  var set = TEASER_FALLBACK[poi.kind] || TEASER_FALLBACK.food;
+  var h = 0, key = String(poi.id || poi.name || "");
+  for (var i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+  var start = h % set.length;
+  // 同じ回の3枚に同じ文が並ぶと、手を抜いたように見える。ずらす。
+  for (var j = 0; j < set.length; j++) {
+    var cand = set[(start + j) % set.length];
+    if (!used || !used[cand[1]]) { if (used) used[cand[1]] = 1; return cand; }
+  }
+  return set[start];
+}
+
+var KIND_ICON = { culture: "i-temple", green: "i-park", craft: "i-craft", food: "i-food" };
 
 /* ════════════════════ 6 · 測位 ════════════════════ */
 
@@ -3279,15 +3405,18 @@ function startWalk() {
     avoid: avoidOn(), visited: Store.visitedIds(), now: new Date()
   };
 
+  pending = { origin: origin, ctx: ctx, minutes: minutes, moods: moods, pois: null };
+
   Sources.fetch(origin, Math.round(max), moods).then(function (pois) {
-    var dest = Draw.pick(pois, ctx);
-    if (!dest) {
-      // 候補が尽きたら、混雑回避と既訪問の条件を緩めて引き直す
+    pending.pois = pois;
+    var three = Draw.pickMany(pois, ctx, 3);
+    if (!three.length) {
+      // 候補が尽きたら、既訪問の条件だけ緩めて引き直す
       ctx.visited = new Set();
-      dest = Draw.pick(pois, ctx);
+      three = Draw.pickMany(pois, ctx, 3);
     }
-    if (!dest) throw new Error("no candidate");
-    beginNav(origin, dest, minutes, moods, ctx.avoid);
+    if (!three.length) throw new Error("no candidate");
+    showPicks(three);
   }).catch(function () {
     $("drawing").hidden = true;
     main.classList.remove("compass-on");
@@ -3295,6 +3424,121 @@ function startWalk() {
           "その条件だと候補がありませんでした。気分か時間を変えてお試しください。");
     Loc.stop(); Heading.stop();
   });
+}
+
+/* 抽選のあと、次に選ばれるまでのあいだ持っておくもの。 */
+var pending = null;
+
+/* 三つの針路を出す。正体は伏せたまま、伏せた一行と距離だけ見せる。
+   写真はぼかす。色と明るさは伝わるが、どこかは分からない。 */
+function showPicks(list) {
+  var ul = $("pick-list");
+  ul.innerHTML = "";
+  var usedTeasers = {};
+
+  list.forEach(function (poi) {
+    var d = distanceM(pending.origin, poi);
+    var mins = Math.max(1, Math.round(d * CONFIG.DETOUR / CONFIG.WALK_SPEED));
+    var back = new Date(Date.now() + (mins * 2 + 10) * 60000);
+    var tea = teaserOf(poi, usedTeasers);
+
+    var li = document.createElement("li");
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "pick";
+
+    var thumb = document.createElement("div");
+    thumb.className = "pick-thumb";
+    if (poi.image) {
+      var img = document.createElement("img");
+      img.src = poi.image;
+      img.alt = "";                 // 伏せているので読み上げさせない
+      img.loading = "lazy";
+      img.addEventListener("error", function () {
+        thumb.innerHTML = "";
+        thumb.appendChild(iconSvg(KIND_ICON[poi.kind] || "i-pin"));
+      });
+      thumb.appendChild(img);
+    } else {
+      thumb.appendChild(iconSvg(KIND_ICON[poi.kind] || "i-pin"));
+    }
+
+    var body = document.createElement("div");
+    body.className = "pick-body";
+    var t = document.createElement("p");
+    t.className = "pick-teaser";
+    t.setAttribute("data-en", tea[0]);
+    t.setAttribute("data-ja", tea[1]);
+    t.textContent = lang === "ja" ? tea[1] : tea[0];
+    var m = document.createElement("p");
+    m.className = "pick-meta";
+    var hh = back.getHours(), mm = ("0" + back.getMinutes()).slice(-2);
+    m.setAttribute("data-en", fmtDist(d) + " · " + mins + " min walk · back by " + hh + ":" + mm);
+    m.setAttribute("data-ja", fmtDist(d) + "・徒歩" + mins + "分・" + hh + "時" + mm + "分には戻れます");
+    m.textContent = lang === "ja" ? m.getAttribute("data-ja") : m.getAttribute("data-en");
+    body.appendChild(t); body.appendChild(m);
+
+    btn.appendChild(thumb); btn.appendChild(body);
+    btn.addEventListener("click", function () { choosePick(poi); });
+    li.appendChild(btn);
+    ul.appendChild(li);
+  });
+
+  var n = list.length;
+  setText("picks-sub",
+    n + " of " + countable(pending.pois, pending.ctx) + " candidates, drawn from the quiet side.",
+    "候補 " + countable(pending.pois, pending.ctx) + " のなかから " + n + "つ引きました。混んでいる場所は入っていません。");
+  setText("picks-note",
+    "What each one is stays hidden until you arrive.",
+    "どれが何なのかは、着くまでわかりません。");
+
+  $("drawing").hidden = true;
+  $("picks").hidden = false;
+  applyLang();
+}
+
+/* いま条件を満たしている候補の数。3択の下に出す。 */
+function countable(pois, ctx) {
+  var n = 0;
+  for (var i = 0; i < pois.length; i++) if (Draw.weight(pois[i], ctx) > 0.0001) n++;
+  return n;
+}
+
+function iconSvg(id) {
+  var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  var use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+  use.setAttribute("href", "#" + id);
+  svg.appendChild(use);
+  return svg;
+}
+
+function fmtDist(m) {
+  return m >= 1000 ? (m / 1000).toFixed(1) + "km" : Math.round(m / 10) * 10 + "m";
+}
+
+function choosePick(poi) {
+  $("picks").hidden = true;
+  beginNav(pending.origin, poi, pending.minutes, pending.moods, pending.ctx.avoid);
+}
+
+function redrawPicks() {
+  if (!pending || !pending.pois) return;
+  $("picks").hidden = true;
+  $("drawing").hidden = false;
+  setTimeout(function () {
+    var three = Draw.pickMany(pending.pois, pending.ctx, 3);
+    if (!three.length) { pending.ctx.visited = new Set(); three = Draw.pickMany(pending.pois, pending.ctx, 3); }
+    if (!three.length) { cancelPicks(); return; }
+    showPicks(three);
+  }, 700);
+}
+
+function cancelPicks() {
+  $("picks").hidden = true;
+  $("drawing").hidden = true;
+  main.classList.remove("compass-on");
+  Loc.stop(); Heading.stop();
+  pending = null;
 }
 
 function beginNav(origin, dest, minutes, moods, avoid) {
@@ -3734,9 +3978,121 @@ $("demo-play").addEventListener("click", function () { Demo.toggleWalk(); });
 
 $("btn-gallery").addEventListener("click", function (e) { e.stopPropagation(); openGallery(); });
 $("gal-back").addEventListener("click", function () { newSeals = []; enterMap(); });
+$("picks-redraw").addEventListener("click", redrawPicks);
+$("picks-cancel").addEventListener("click", cancelPicks);
+$("res-share").addEventListener("click", shareWalk);
 $("res-again").addEventListener("click", function () { newSeals = []; enterMap(); setSheet(true); });
 $("res-gallery").addEventListener("click", openGallery);
 $("res-home").addEventListener("click", function () { newSeals = []; Loc.stop(); showScreen("cover"); });
+
+/* ════════════════════ 15.5 · 共有 ════════════════════
+
+   出す: 行き先の名前・歩いた距離・出発地よりどれだけ空いていたか・印
+   出さない: 出発地。自宅であることが多いので、座標も町名も入れない。 */
+
+function shareText(w) {
+  var km = ((w.walked || 0) / 1000).toFixed(1);
+  var q = 100 - (w.destCrowd || 0);
+  return lang === "ja"
+    ? "「" + (w.dest.name || "なんでもない場所") + "」に着きました。\n" +
+      km + "km 歩いて、出発地点より " + q + "% 空いている場所へ。\n#Tokyosozoro"
+    : "Arrived at " + (w.dest.name || "nowhere in particular") + ".\n" +
+      km + " km on foot, to somewhere " + q + "% quieter than where I set off.\n#Tokyosozoro";
+}
+
+/* 共有用の画像を1枚描く。文字だけだと流れないので。 */
+function shareCard(w) {
+  var c = $("share-canvas"), g = c.getContext("2d");
+  var W = c.width, H = c.height;
+  var km = ((w.walked || 0) / 1000).toFixed(1);
+  var quiet = 100 - (w.destCrowd || 0);
+  var ja = lang === "ja";
+
+  g.fillStyle = "#20242B"; g.fillRect(0, 0, W, H);
+  g.fillStyle = "#2A2F38";
+  for (var i = 0; i < 26; i++) {
+    var y = 250 + i * 42;
+    g.fillRect(0, y, W, 1);
+  }
+  g.fillStyle = "rgba(32,36,43,0.88)"; g.fillRect(0, 0, W, H);
+
+  g.textAlign = "center";
+  g.fillStyle = "#7FB3FF";
+  g.font = "500 34px system-ui, sans-serif";
+  g.fillText("TOKYO SOZORO", W / 2, 150);
+
+  g.fillStyle = "#8E96A4";
+  g.font = "400 40px system-ui, sans-serif";
+  g.fillText(ja ? "行き先を伏せた散歩" : "A walk with the destination hidden", W / 2, 224);
+
+  g.fillStyle = "#F4F6F9";
+  g.font = "650 84px system-ui, sans-serif";
+  var name = w.dest.name || (ja ? "なんでもない場所" : "Nowhere in particular");
+  var lines = [], line = "";
+  for (var k = 0; k < name.length; k++) {
+    line += name[k];
+    if (g.measureText(line).width > W - 180) { lines.push(line); line = ""; }
+  }
+  if (line) lines.push(line);
+  lines = lines.slice(0, 3);
+  var top = 470 - (lines.length - 1) * 52;
+  lines.forEach(function (l, i) { g.fillText(l, W / 2, top + i * 104); });
+
+  g.strokeStyle = "rgba(255,255,255,0.14)"; g.lineWidth = 2;
+  g.beginPath(); g.moveTo(180, 700); g.lineTo(W - 180, 700); g.stroke();
+
+  function stat(x, big, small) {
+    g.fillStyle = "#F4F6F9"; g.font = "650 96px system-ui, sans-serif";
+    g.fillText(big, x, 850);
+    g.fillStyle = "#8E96A4"; g.font = "400 36px system-ui, sans-serif";
+    g.fillText(small, x, 908);
+  }
+  stat(W * 0.28, km + "km", ja ? "歩いた" : "walked");
+  stat(W * 0.72, quiet + "%", ja ? "空いてた" : "quieter");
+
+  g.fillStyle = "#8E96A4"; g.font = "400 34px system-ui, sans-serif";
+  var seal = $("res-badge") ? ($("res-badge").textContent || "") : "";
+  if (seal && seal !== "—") g.fillText(seal, W / 2, 1030);
+
+  g.fillStyle = "#5D6572"; g.font = "400 30px system-ui, sans-serif";
+  g.fillText(ja ? "上野・浅草から、人の少ない側へ歩く" : "Walking away from the crowd, out of Ueno and Asakusa", W / 2, 1180);
+  g.fillStyle = "#7FB3FF"; g.font = "400 32px system-ui, sans-serif";
+  g.fillText("sohmen99.github.io/tokyo-sozoro", W / 2, 1250);
+  return c;
+}
+
+function shareWalk() {
+  var all = Store.walks(), w = all[all.length - 1];
+  if (!w || !w.dest) return;
+  var text = shareText(w), url = location.origin + location.pathname;
+
+  function fallback() {
+    if (navigator.share) {
+      navigator.share({ title: "Tokyo sozoro", text: text, url: url }).catch(function () {});
+      return;
+    }
+    var full = text + "\n" + url;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(full).then(function () {
+        toast("Copied. Paste it anywhere.", "コピーしました。どこにでも貼れます。");
+      }).catch(function () { toast("Could not share.", "共有できませんでした。"); });
+    } else {
+      toast("Could not share.", "共有できませんでした。");
+    }
+  }
+
+  try {
+    shareCard(w).toBlob(function (blob) {
+      if (!blob) return fallback();
+      var file = new File([blob], "tokyo-sozoro.png", { type: "image/png" });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], text: text, url: url }).catch(function () {});
+      } else {
+        fallback();
+      }
+    }, "image/png");
+  } catch (e) { fallback(); }
+}
 
 /* ════════════════════ 16 · 起動 ════════════════════ */
 
