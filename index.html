@@ -1242,6 +1242,15 @@
   .seal.on .nm { color: var(--washi); }
   .seal.on .cd { color: #8E96A4; }
   .seal.is-new { animation: sealpop .5s cubic-bezier(.32,.72,0,1); }
+  /* 到着したときの写真。無ければ枠ごと出さない。 */
+  .res-photo { margin: 12px 0 0; }
+  .res-photo img {
+    display: block; width: 100%; max-height: 210px; object-fit: cover;
+    border-radius: 12px; background: var(--map-block);
+  }
+  .res-photo figcaption { margin-top: 5px; font-size: 11px; color: var(--muted); }
+  #res-about { margin: 10px 0 0; font-size: 13.5px; line-height: 1.75; }
+
   @keyframes sealpop { from { transform: scale(.86); opacity: .4 } }
   @media (prefers-reduced-motion: reduce) { .seal.is-new { animation: none } }
 
@@ -1805,6 +1814,11 @@
             <div class="res-body">
               <h3 id="res-name">—</h3>
               <p class="where" id="res-where" data-en="—" data-ja="—">—</p>
+              <figure class="res-photo" id="res-photo" hidden>
+                <img id="res-img" alt="" loading="lazy">
+                <figcaption id="res-img-credit"></figcaption>
+              </figure>
+              <p id="res-about" hidden></p>
               <p id="res-desc" data-en="—" data-ja="—">—</p>
               <a class="btn btn-quiet" id="res-map" href="#" target="_blank" rel="noopener" style="margin-top:12px" data-en="Check it on the map" data-ja="地図でたしかめる">地図でたしかめる</a>
               <p class="res-sync" data-state="src"><span class="led"></span><span id="res-src" data-en="—" data-ja="—">—</span></p>
@@ -2423,14 +2437,93 @@ var TokyoOpenDataSource = {
   }
 };
 
-/* 都のデータを先に置き、足りないところを OpenStreetMap で埋める。
-   同じ場所が両方にあるときは、都のデータを採る。 */
+/* 生きているデータベース。代表の Cloudflare Worker + D1。
+   ここだけが唯一の通信で、しかも起動時に1回、裏で走るだけ。
+   間に合わなくても失敗しても、焼き込んだ候補地でそのまま動く。
+   だから会場のwifiが弱くても、Workerが落ちていても、アプリは開く。
+
+   取るのは「語れるもの」だけ。写真と説明と伏せた一行を持ちうる3レイヤーで、
+   合わせて414件・247KB・3リクエスト。食べる7,136件は営業許可の名簿で、
+   写真も説明も付いていないうえ3.5MBあるので取らない。そちらは
+   OpenStreetMap 由来の焼き込み（チェーン除外済み）のほうが行き先として良い。 */
+var LiveDb = {
+  ENDPOINT: "https://sozoro.opd-hackathon-b.workers.dev/api/all",
+  LAYERS: { "街を見る": ["culture", 0.30], "体験する": ["craft", 0.18], "静かに歩く": ["green", 0.25] },
+  state: "idle",          // idle | loading | ready | failed
+  items: [],
+  at: null,
+
+  load: function () {
+    if (this.state === "loading" || this.state === "ready") return;
+    this.state = "loading";
+    var self = this, keys = Object.keys(this.LAYERS), got = [], left = keys.length;
+    keys.forEach(function (layer) {
+      var url = self.ENDPOINT + "?limit=500&layer=" + encodeURIComponent(layer);
+      fetch(url, { mode: "cors" })
+        .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+        .then(function (d) { (d.destinations || []).forEach(function (x) { got.push(self.map(x, layer)); }); })
+        .catch(function () { /* 黙って焼き込みのまま続ける */ })
+        .then(function () {
+          if (--left) return;
+          var live = got.filter(Boolean);
+          // 一部でも取れたら採る。全部落ちたら焼き込みのまま。
+          if (live.length) { self.items = live; self.state = "ready"; self.at = new Date(); }
+          else { self.state = "failed"; }
+          if (typeof updateSheetFoot === "function") updateSheetFoot();
+        });
+    });
+  },
+
+  map: function (x, layer) {
+    if (!x || typeof x.lat !== "number" || typeof x.lon !== "number") return null;
+    if (x.coord_quality === "chome") return null;      // 丁目代表点は距離が狂う
+    if (isChain(x.name)) return null;                   // 行き先がチェーンでは伏せる意味がない
+    var m = this.LAYERS[layer];
+    return {
+      src: "d1", id: "d1/" + x.id, name: x.name, nameEn: x.name_en || null,
+      kindEn: "Spot", kindJa: x.category || "スポット", kind: m[0], pop: m[1],
+      lat: x.lat, lon: x.lon, ward: x.ward || null,
+      teaser: (x.teaser || "").trim() || null,
+      description: (x.description || "").trim() || null,
+      image: (x.image_url || "").trim() || null,
+      imageCredit: (x.image_credit || "").trim() || null
+    };
+  },
+
+  fetch: function (origin, radius, keys) {
+    return this.items.filter(function (p) {
+      return keys.indexOf(p.kind) >= 0 && distanceM(origin, p) <= radius;
+    });
+  }
+};
+
+/* チェーンは行き先にしない。焼き込み側は生成時に落としてあるが、
+   生きているDBは掃除の途中なので、こちらでも同じ規則をかける。
+   DBが片づいたら、この関数が何も落とさなくなるだけ。 */
+var CHAIN_RE = new RegExp(
+  "マクドナルド|モスバーガー|ケンタッキー|ロッテリア|バーガーキング|サブウェイ|吉野家|すき家|なか卯" +
+  "|てんや|富士そば|ゆで太郎|小諸そば|日高屋|餃子の王将|大阪王将|幸楽苑|リンガーハット|CoCo壱番屋" +
+  "|かつや|やよい軒|大戸屋|サイゼリヤ|ガスト|バーミヤン|ジョナサン|デニーズ|ロイヤルホスト|夢庵" +
+  "|スシロー|くら寿司|かっぱ寿司|はま寿司|魚べい|丸亀製麺|はなまるうどん|スターバックス|ドトール" +
+  "|タリーズ|エクセルシオール|サンマルク|ベローチェ|コメダ|プロント|カフェ・ド・クリエ|ミスタードーナツ" +
+  "|セブン-?イレブン|ファミリーマート|ローソン|ミニストップ|デイリーヤマザキ|まいばすけっと" +
+  "|白木屋|魚民|笑笑|鳥貴族|串カツ田中|土間土間|養老乃瀧|甘太郎|安楽亭|牛角|焼肉きんぐ" +
+  "|McDonald|KFC|Subway|Lawson|FamilyMart", "i");
+function isChain(name) {
+  if (!name) return false;
+  if (/(?:^|[^一-龥])松屋/.test(name) || /(?:^|[^一-龥])和民/.test(name)) return true;
+  return CHAIN_RE.test(name);
+}
+
+/* 生きているDBを先に置き、都の焼き込み、OpenStreetMap の順に足す。
+   同じ場所が重なったときは、写真と説明を持っている生きているDBを採る。 */
 var Sources = {
   /* 候補地は全部ファイルの中にある。通信は一度も起きない。
      抽選が一瞬で終わってしまうと引いた感じがしないので、少しだけ間を置く。 */
   fetch: function (origin, radius, keys) {
-    var all = Sources.merge(TokyoOpenDataSource.fetch(origin, radius, keys),
-                            OsmSnapshot.fetch(origin, radius, keys));
+    var all = Sources.merge(LiveDb.fetch(origin, radius, keys),
+                Sources.merge(TokyoOpenDataSource.fetch(origin, radius, keys),
+                              OsmSnapshot.fetch(origin, radius, keys)));
     return new Promise(function (ok) { setTimeout(function () { ok(all); }, 700); });
   },
   merge: function (a, b) {
@@ -2445,6 +2538,7 @@ var Sources = {
 };
 
 var SRC_LABEL = {
+  d1:       ["Taito / Arakawa open data", "台東区・荒川区オープンデータ"],
   bunkazai: ["Cultural property register, Tokyo open data", "東京都オープンデータ・各区文化財一覧"],
   craft:    ["Taito traditional crafts register", "台東区 伝統工芸職人一覧"],
   osm:      ["OpenStreetMap contributors (ODbL)", "OpenStreetMap contributors（ODbL）"]
@@ -3352,6 +3446,20 @@ function arrive() {
   setText("res-desc",
     "Drawn from the quiet side, " + Math.round(straight) + " m out in a straight line from where you started.",
     "空いている側から抽選しました。出発地点から直線で" + Math.round(straight) + "m の場所です。");
+  // 写真と説明はあれば出す。無いときは枠ごと出さない。
+  // データが埋まった分だけ、画面を触らずに良くなる。
+  var photo = $("res-photo"), about = $("res-about");
+  if (w.dest.image) {
+    $("res-img").src = w.dest.image;
+    $("res-img").alt = w.dest.name || "";
+    $("res-img-credit").textContent = w.dest.imageCredit || "";
+    $("res-img-credit").hidden = !w.dest.imageCredit;
+    photo.hidden = false;
+  } else { photo.hidden = true; $("res-img").removeAttribute("src"); }
+
+  if (w.dest.description) { about.textContent = w.dest.description; about.hidden = false; }
+  else { about.hidden = true; }
+
   var lab = SRC_LABEL[w.dest.src] || SRC_LABEL.osm;
   setText("res-src", "Source · " + lab[0], "出典 · " + lab[1]);
 
@@ -3651,6 +3759,7 @@ updateSheetFoot();
 updatePeek();
 applyLang();
 drawMap();
+LiveDb.load();            // 生きているDBを1回だけ裏で読む。間に合わなくても抽選は動く。
 if (new URLSearchParams(location.search).get("demo") === "1") Demo.set(true);
 setInterval(function () { if (!Demo.on) { refreshCrowd(); refreshHours(); } }, 60000);
 </script>
