@@ -1369,6 +1369,26 @@
   .res-sync .led { width: 5px; height: 5px; border-radius: 50%; background: #4A525E; }
   .res-sync[data-state="sent"] .led { background: var(--quiet-dk); }
   .res-sync[data-state="queued"] .led { background: var(--mid-dk); }
+
+  /* ═══════════════ 到着画面の高さ（最後に効かせる） ═══════════════
+     .result には上のほうで overflow-y:auto、下のほうで overflow:hidden と
+     反対の指定が二重にかかっていた。順番に頼ると同じ事故が起きるので、
+     ここは id を付けて優先度で決める。
+
+     縦並びは flex をやめて素の block にした。flex だと中身が縮んで
+     重なるので、そもそも縮む余地のない積み方にする。 */
+  #sc-result .result {
+    display: block;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding-bottom: 44px;
+  }
+  #sc-result .res-top { margin-bottom: 20px; }
+  #sc-result .res-near { margin-top: 18px; }
+  #sc-result .res-cta { margin-top: 4px; }
+
 </style>
 
 <!-- アイコン: Lucide (ISC) https://lucide.dev / Tabler Icons (MIT) https://tabler.io/icons -->
