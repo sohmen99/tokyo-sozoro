@@ -1137,6 +1137,76 @@
   }
   .hint-line strong { color: var(--white); font-weight: 600; }
 
+  /* ─────────── デモモード ─────────── */
+
+  .demo {
+    position: absolute; left: 16px; right: 16px;
+    bottom: calc(var(--sheet-h, 120px) + 14px);
+    z-index: 60;
+    background: rgba(20,23,28,0.93);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--hairline-dk);
+    border-left: 3px solid var(--mid-dk);
+    border-radius: var(--r);
+    padding: 11px 13px 12px;
+    display: grid; gap: 9px;
+    transition: bottom .36s cubic-bezier(.32,.72,0,1);
+    color: #C6CCD6;
+  }
+  .demo[hidden] { display: none; }
+  .demo-head { display: flex; align-items: center; justify-content: space-between; }
+  .demo-head .label-mono { color: var(--mid-dk); font-size: 9px; }
+  .demo-x {
+    border: 0; background: transparent; color: #7E8797; cursor: pointer;
+    display: grid; place-items: center; padding: 2px;
+  }
+  .demo-x:hover { color: var(--washi); }
+  .demo-row { display: flex; align-items: center; gap: 10px; min-height: 26px; }
+  .demo-row .k {
+    flex: 0 0 44px;
+    font-family: var(--font-mono); font-size: 9px; letter-spacing: .14em;
+    text-transform: uppercase; color: #6E7787;
+  }
+  .demo-row .hint { font-size: 11px; line-height: 1.5; color: #8E96A4; }
+  .demo-v {
+    flex: 0 0 auto; font-family: var(--font-mono); font-size: 12px; color: var(--washi);
+    min-width: 46px; text-align: right;
+  }
+  .demo input[type="range"] {
+    flex: 1; min-width: 0; -webkit-appearance: none; appearance: none;
+    height: 3px; border-radius: 99px; background: #3B434F; outline: none;
+  }
+  .demo input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 17px; height: 17px; border-radius: 50%;
+    background: var(--washi); border: 3px solid var(--mid-dk); cursor: pointer;
+  }
+  .demo input[type="range"]::-moz-range-thumb {
+    width: 17px; height: 17px; border-radius: 50%;
+    background: var(--washi); border: 3px solid var(--mid-dk); cursor: pointer;
+  }
+  .seg-sm { display: flex; border: 1px solid var(--hairline-dk); border-radius: 2px; overflow: hidden; }
+  .seg-sm button {
+    border: 0; background: transparent; color: #8E96A4;
+    font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .06em;
+    padding: 5px 9px; cursor: pointer;
+  }
+  .seg-sm button + button { border-left: 1px solid var(--hairline-dk); }
+  .seg-sm button[aria-pressed="true"] { background: var(--washi); color: var(--sumi); }
+  .demo-play {
+    flex: 1; border: 1px solid var(--hairline-dk); border-radius: 2px;
+    background: transparent; color: var(--washi);
+    font-family: var(--font-body); font-weight: 600; font-size: 12px;
+    padding: 6px 10px; cursor: pointer;
+  }
+  .demo-play:hover { background: rgba(255,255,255,0.07); }
+  .demo-play[data-on="1"] { background: var(--mid-dk); color: var(--sumi); border-color: var(--mid-dk); }
+
+  /* デモ中は地図の凡例を退かせる。コンパスの上では歩行の行だけ残す */
+  .main.demo-on .map-foot { opacity: 0; pointer-events: none; }
+  .main.compass-on .demo { bottom: 96px; }
+  .main.compass-on .demo .demo-row:not(.demo-walk), .main.compass-on .demo-head { display: none; }
+  .main.demo-on .me-dot { border: 2px solid var(--mid); }
+
   /* ─────────── 印のギャラリー ─────────── */
 
   .gal {
@@ -1389,6 +1459,10 @@
             <h4 class="label-mono" data-en="Settings" data-ja="設定">Settings</h4>
             <div class="pop-row"><span data-en="Distance" data-ja="距離の単位">Distance</span><span style="font-family:var(--font-mono);color:var(--muted)">km</span></div>
             <div class="pop-row"><span data-en="Buzz on arrival" data-ja="到着時のバイブ">Buzz on arrival</span><span style="color:var(--quiet)" data-en="On" data-ja="オン">On</span></div>
+            <div class="pop-row">
+              <span data-en="Demo mode" data-ja="デモモード">Demo mode</span>
+              <button class="switch" id="demo-switch" role="switch" aria-checked="false" aria-label="デモモード"></button>
+            </div>
           </div>
 
           <div class="pop" id="pop-help">
@@ -1414,6 +1488,40 @@
           </div>
 
           <!-- ── zoom / locate ── -->
+          <!-- 確認用。場所と時刻を自由に置ける -->
+          <div class="demo" id="demo" hidden>
+            <div class="demo-head">
+              <span class="label-mono" data-en="Demo" data-ja="デモ">デモ</span>
+              <button class="demo-x" id="demo-off" aria-label="デモモードを終わる"><svg width="14" height="14"><use href="#i-close"/></svg></button>
+            </div>
+            <div class="demo-row">
+              <span class="k" data-en="Time" data-ja="時刻">時刻</span>
+              <input type="range" id="demo-hour" min="0" max="23.5" step="0.5" value="14">
+              <span class="demo-v" id="demo-hour-v">14:00</span>
+            </div>
+            <div class="demo-row">
+              <span class="k" data-en="Day" data-ja="曜日">曜日</span>
+              <div class="seg-sm" id="demo-day">
+                <button type="button" data-w="0" aria-pressed="false" data-en="Weekday" data-ja="平日">平日</button>
+                <button type="button" data-w="1" aria-pressed="true" data-en="Weekend" data-ja="休日">休日</button>
+              </div>
+              <span class="demo-v" id="demo-crowd">—</span>
+            </div>
+            <div class="demo-row">
+              <span class="k" data-en="Here" data-ja="現在地">現在地</span>
+              <span class="hint" id="demo-where" data-en="Tap the map to stand there." data-ja="地図を押すと、そこに立ちます。">地図を押すと、そこに立ちます。</span>
+            </div>
+            <div class="demo-row demo-walk">
+              <span class="k" data-en="Walk" data-ja="歩く">歩く</span>
+              <button class="demo-play" id="demo-play" data-on="0" data-en="Walk to it" data-ja="行き先まで歩く">行き先まで歩く</button>
+              <div class="seg-sm" id="demo-speed">
+                <button type="button" data-s="1" aria-pressed="false">×1</button>
+                <button type="button" data-s="10" aria-pressed="false">×10</button>
+                <button type="button" data-s="60" aria-pressed="true">×60</button>
+              </div>
+            </div>
+          </div>
+
           <div class="off-area" id="off-area" hidden>
             <span class="off-icn"><svg width="15" height="15"><use href="#i-pin"/></svg></span>
             <span>
@@ -1852,6 +1960,15 @@ function bearingDeg(a, b) {
   return (deg(Math.atan2(y, x)) + 360) % 360;
 }
 
+/** from から方位 brg（度）へ dist メートル進んだ点。 */
+function moveTowards(from, brg, dist) {
+  var d = dist / R_EARTH, b = rad(brg), la1 = rad(from.lat), lo1 = rad(from.lon);
+  var la2 = Math.asin(Math.sin(la1) * Math.cos(d) + Math.cos(la1) * Math.sin(d) * Math.cos(b));
+  var lo2 = lo1 + Math.atan2(Math.sin(b) * Math.sin(d) * Math.cos(la1),
+                             Math.cos(d) - Math.sin(la1) * Math.sin(la2));
+  return { lat: deg(la2), lon: ((deg(lo2) + 540) % 360) - 180 };
+}
+
 function fmtDistance(m) {
   if (m >= 1000) return (m / 1000).toFixed(1) + "|km";
   return Math.round(m / 10) * 10 + "|m";
@@ -1987,6 +2104,106 @@ function earnedIds(walks) {
      Crowd.at(点, 日時) が 0〜100 を返す、という契約さえ守れば
      中身をオープンデータ由来の実測値に入れ替えられる。 */
 
+/* ════════════════════ 2.7 · デモモード ════════════════════
+   実機を持って外に出なくても、場所と時刻を自由に置いて確かめられるようにする。
+   ここで作った時刻は Crowd.now() が返す時刻そのものなので、
+   混雑推定も営業時間の判定も、まとめてその時刻に従う。 */
+
+var Demo = {
+  on: false,
+  hour: 14,        // 0〜23.5
+  weekend: true,
+  speed: 60,       // 実時間の何倍で歩くか。既定は発表で見せられる速さ
+  timer: null,
+
+  /** いま何時として扱うか。曜日も指定した側へ寄せる。 */
+  now: function () {
+    var d = new Date(), day = d.getDay();
+    if (this.weekend && day !== 0 && day !== 6) d.setDate(d.getDate() + (6 - day));
+    if (!this.weekend && (day === 0 || day === 6)) d.setDate(d.getDate() + (day === 0 ? 1 : 2));
+    d.setHours(Math.floor(this.hour), Math.round((this.hour % 1) * 60), 0, 0);
+    return d;
+  },
+
+  set: function (state) {
+    this.on = !!state;
+    $("demo").hidden = !this.on;
+    main.classList.toggle("demo-on", this.on);
+    $("demo-switch").setAttribute("aria-checked", String(this.on));
+    this.stopWalk();
+    if (this.on) {
+      Loc.stop();                                    // 実測と混ざらないように止める
+      if (!Loc.position) this.place(35.7148, 139.7967);   // 既定は浅草寺
+      setLoc("ready");
+    } else {
+      setLoc("wait");
+      Loc.start(function () { setLoc("ready"); placeMe(); },
+                function (e) { setLoc("error", Loc.message(e)); });
+    }
+    this.sync();
+    refreshCrowd(); refreshHours(); drawNav(); placeMe();
+  },
+
+  /** 地図の上に立つ。 */
+  place: function (lat, lon) {
+    Loc.position = { lat: lat, lon: lon };
+    Loc.accuracy = 8;
+    placeMe(); drawNav(); checkArrival(); this.sync();
+  },
+
+  /** 表示を現在の設定に合わせる。 */
+  sync: function () {
+    var h = Math.floor(this.hour), m = Math.round((this.hour % 1) * 60);
+    $("demo-hour-v").textContent = ("0" + h).slice(-2) + ":" + ("0" + m).slice(-2);
+    $("demo-hour").value = this.hour;
+    document.querySelectorAll("#demo-day button").forEach(function (b) {
+      b.setAttribute("aria-pressed", String((b.getAttribute("data-w") === "1") === Demo.weekend));
+    });
+    document.querySelectorAll("#demo-speed button").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(Number(b.getAttribute("data-s")) === Demo.speed));
+    });
+    if (Loc.position) {
+      var v = Crowd.at({ lat: Loc.position.lat, lon: Loc.position.lon, kind: "culture", pop: 0.9 });
+      $("demo-crowd").textContent = "混雑 " + v;
+      var near = LANDMARKS.map(function (m) { return { m: m, d: distanceM(Loc.position, m) }; })
+                          .sort(function (a, b) { return a.d - b.d; })[0];
+      setText("demo-where",
+        "Standing " + Math.round(near.d) + " m from " + near.m.en + ". Tap the map to move.",
+        near.m.ja + "から " + Math.round(near.d) + "m の地点に立っています。地図を押すと移動します。");
+      applyLang();
+    }
+  },
+
+  /** 行き先へ向かって歩かせる。 */
+  toggleWalk: function () {
+    if (this.timer) return this.stopWalk();
+    if (!walk || !Loc.position) {
+      toast("Draw a destination first.", "先に行き先を抽選してください。");
+      return;
+    }
+    $("demo-play").setAttribute("data-on", "1");
+    setText("demo-play", "Stop", "とめる"); applyLang();
+    this.timer = setInterval(function () {
+      if (!walk || !Loc.position) return Demo.stopWalk();
+      var step = 80 * Demo.speed * (250 / 60000);        // 徒歩80m/分 × 倍率
+      var left = distanceM(Loc.position, walk.dest);
+      var brg = bearingDeg(Loc.position, walk.dest);
+      Heading.value = brg;                                // 針が進行方向を向く
+      Demo.place2(moveTowards(Loc.position, brg, Math.min(step, left)));
+      if (left <= step) Demo.stopWalk();
+    }, 250);
+  },
+  place2: function (p) {
+    Loc.position = p;
+    placeMe(); drawNav(); checkArrival();
+  },
+  stopWalk: function () {
+    if (this.timer) { clearInterval(this.timer); this.timer = null; }
+    var b = $("demo-play");
+    if (b) { b.setAttribute("data-on", "0"); setText("demo-play", "Walk to it", "行き先まで歩く"); applyLang(); }
+  }
+};
+
 // 人流メッシュを 0〜1 に正規化する範囲。実データの 5%〜95% 点で決める。
 var MESH_LO = 0, MESH_HI = 1;
 (function () {
@@ -2011,6 +2228,7 @@ var Crowd = {
   /* いま何時として扱うか。?h=14 を付けるとその時刻の混雑で表示できる。
      深夜に触っていると全部 quiet になって何も見えないので、確認用に。 */
   now: function () {
+    if (Demo.on) return Demo.now();
     var d = new Date();
     var h = new URLSearchParams(location.search).get("h");
     if (h !== null && h !== "") d.setHours(Number(h), 0, 0, 0);
@@ -2447,7 +2665,8 @@ var Projection = (function () {
   var KY = 111132 / METRES_PER_PX;
   return {
     ok: true,
-    toCanvas: function (p) { return { x: CX + (p.lon - LON0) * KX, y: CY - (p.lat - LAT0) * KY }; }
+    toCanvas: function (p) { return { x: CX + (p.lon - LON0) * KX, y: CY - (p.lat - LAT0) * KY }; },
+    toLatLon: function (x, y) { return { lat: LAT0 - (y - CY) / KY, lon: LON0 + (x - CX) / KX }; }
   };
 })();
 
@@ -2598,11 +2817,14 @@ viewport.addEventListener("pointerdown", function (e) {
   viewport.classList.add("is-dragging");
   canvas.classList.remove("is-flying");
   dragging = true;
+  tapStart = { x: e.clientX, y: e.clientY, moved: 0 };
   if (pointers.size === 2) {
     var p = Array.from(pointers.values());
     pinchStart = { dist: Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y), k: k, mid: midpoint(p) };
   }
 });
+var tapStart = null;
+
 function midpoint(p) {
   var r = viewport.getBoundingClientRect();
   var s = r.width / W;
@@ -2613,6 +2835,7 @@ viewport.addEventListener("pointermove", function (e) {
   var prev = pointers.get(e.pointerId);
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   var s = viewport.getBoundingClientRect().width / W;
+  if (tapStart) tapStart.moved = Math.max(tapStart.moved, Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y));
   if (pointers.size === 1) {
     tx += (e.clientX - prev.x) / s; ty += (e.clientY - prev.y) / s; drawMap();
   } else if (pointers.size === 2 && pinchStart) {
@@ -2627,6 +2850,17 @@ function endPointer(e) {
   if (pointers.size > 0) return;
   viewport.classList.remove("is-dragging");
   dragging = false;
+
+  // デモ中は、地図を軽く叩いた場所に立つ
+  if (Demo.on && tapStart && tapStart.moved < 7) {
+    var r = viewport.getBoundingClientRect(), sc = r.width / W;
+    var mx = ((e.clientX - r.left) / sc - tx) / k, my = ((e.clientY - r.top) / sc - ty) / k;
+    var pt = Projection.toLatLon(mx, my);
+    Demo.stopWalk();
+    Demo.place(pt.lat, pt.lon);
+  }
+  tapStart = null;
+
   var L = limits();
   var over = tx > 0 || tx < L.x || ty > 0 || ty < L.y;
   if (over) canvas.classList.add("is-flying");
@@ -2884,6 +3118,7 @@ function enterMap() {
   showScreen("main");
   fitStage();
   homeView(); drawMap();
+  if (Demo.on) { setLoc("ready"); placeMe(); return; }
   setLoc("wait");
   Loc.start(function () { setLoc("ready"); placeMe(); },
             function (e) { setLoc("error", Loc.message(e)); });
@@ -3028,6 +3263,7 @@ function checkArrival() {
 }
 
 function arrive() {
+  Demo.stopWalk();
   var w = walk;
   walk = null;
   Loc.stop(); Heading.stop();
@@ -3063,6 +3299,7 @@ function arrive() {
     dispersion: quieter,          // 何ポイント空いている方へ動いたか
     hintsUsed: w.hintsUsed,
     points: points,
+    demo: Demo.on || undefined,
     crowdSource: Crowd.source
   };
   var before = earnedIds(Store.walks());
@@ -3333,6 +3570,23 @@ $("btn-cover").addEventListener("click", function (e) {
   Loc.stop();
   showScreen("cover");
 });
+$("demo-switch").addEventListener("click", function (e) { e.stopPropagation(); Demo.set(!Demo.on); });
+$("demo-off").addEventListener("click", function () { Demo.set(false); });
+$("demo-hour").addEventListener("input", function (e) {
+  Demo.hour = Number(e.target.value);
+  Demo.sync(); refreshCrowd(); refreshHours(); drawNav();
+});
+document.querySelectorAll("#demo-day button").forEach(function (b) {
+  b.addEventListener("click", function () {
+    Demo.weekend = b.getAttribute("data-w") === "1";
+    Demo.sync(); refreshCrowd(); refreshHours(); drawNav();
+  });
+});
+document.querySelectorAll("#demo-speed button").forEach(function (b) {
+  b.addEventListener("click", function () { Demo.speed = Number(b.getAttribute("data-s")); Demo.sync(); });
+});
+$("demo-play").addEventListener("click", function () { Demo.toggleWalk(); });
+
 $("btn-gallery").addEventListener("click", function (e) { e.stopPropagation(); openGallery(); });
 $("gal-back").addEventListener("click", function () { newSeals = []; enterMap(); });
 $("res-again").addEventListener("click", function () { newSeals = []; enterMap(); setSheet(true); });
@@ -3360,5 +3614,6 @@ updateSheetFoot();
 updatePeek();
 applyLang();
 drawMap();
-setInterval(function () { refreshCrowd(); refreshHours(); }, 60000);
+if (new URLSearchParams(location.search).get("demo") === "1") Demo.set(true);
+setInterval(function () { if (!Demo.on) { refreshCrowd(); refreshHours(); } }, 60000);
 </script>
