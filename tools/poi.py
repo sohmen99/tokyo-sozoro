@@ -1,6 +1,9 @@
 import json, urllib.request, urllib.parse, os, time, sys
 G=os.path.dirname(os.path.abspath(__file__))
 EPS=["https://overpass.kumi.systems/api/interpreter","https://overpass-api.de/api/interpreter","https://overpass.private.coffee/api/interpreter"]
+# チェーンは行き先にしない。OSM の brand / brand:wikidata が付いているものと、
+# タグの整備漏れを名前で拾ったものを、生成側（basemap_emit.py 相当）で落とす。
+#
 # 混雑の中心（浅草寺・上野公園）から徒歩67分ぶん＝直線4.2km。
 # 60分を選んだ人の許容が ±7分なので、その外側まで候補を持っておく。
 A=["around:4200,35.7148,139.7967","around:4200,35.71538,139.7734"]
