@@ -1870,6 +1870,12 @@ var CONFIG = {
   TOL_MIN: 7,            // 距離帯の許容幅。選んだ時間の ±この分数を1σとする
   ARRIVAL_M: 60,         // ここまで近づいたら到着とみなす
   MIN_M: 250,            // これより近い候補は散歩にならない
+
+  // 推したいエリア。静けさの重みだけだと「ただ空いているだけ」の場所が出る。
+  // 歩いて面白い帯は、こちらから積極的に出す。
+  FAVOURED: [
+    { ja: "谷中", en: "Yanaka", lat: 35.7276, lon: 139.7663, radius: 900, boost: 2.4 }
+  ],
   HINTS: 2,              // ヒントの回数
   SYNC_ENDPOINT: null    // ★ サーバーの接続点。立てたらここにURLを入れるだけで送信が始まる
 };
@@ -2479,7 +2485,14 @@ var Draw = {
     var weekend = (ctx.now.getDay() === 0 || ctx.now.getDay() === 6);
     var outward = 0.22 + 0.78 * (1 - Crowd.footfall(poi, weekend));
 
-    return band * quiet * outward + 0.0001;
+    // 4 · 推しエリアの上乗せ。空いているだけでなく、歩いて面白いところへ。
+    var favour = 1;
+    for (var f = 0; f < CONFIG.FAVOURED.length; f++) {
+      var fav = CONFIG.FAVOURED[f];
+      if (distanceM(poi, fav) <= fav.radius) favour = Math.max(favour, fav.boost);
+    }
+
+    return band * quiet * outward * favour + 0.0001;
   },
 
   pick: function (pois, ctx) {
