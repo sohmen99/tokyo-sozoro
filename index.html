@@ -1163,7 +1163,12 @@
     width: 100%; height: 100%; object-fit: cover;
     filter: blur(11px) saturate(1.25); transform: scale(1.35);
   }
-  .pick-thumb svg { width: 30px; height: 30px; color: rgba(255,255,255,0.42); }
+  /* 写真が無いときは分類ごとの絵を敷く。写真と同じだけぼかすので、
+     並んだ3枚のあいだで「写真あり」と「写真なし」の差が目立たない。 */
+  .pick-thumb .pick-art {
+    width: 100%; height: 100%;
+    filter: blur(9px) saturate(1.15); transform: scale(1.3);
+  }
   .pick-body { display: grid; gap: 5px; min-width: 0; }
   .pick-teaser { margin: 0; font-size: 14.5px; font-weight: 600; line-height: 1.55; }
   .pick-meta {
@@ -1337,6 +1342,61 @@
 
 <!-- アイコン: Lucide (ISC) https://lucide.dev / Tabler Icons (MIT) https://tabler.io/icons -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <!-- 三択のサムネ代わり。写真が無いときに、ぼかして敷く。
+       線のアイコンだとぼかしても何も残らないので、詳細表示と同じ
+       平らな塗りの絵にしてある。ぼかした後に伝わるのは色と明暗だけで、
+       それは本物の写真をぼかしたときと同じ情報量になる。 -->
+  <symbol id="art-culture" viewBox="0 0 84 84">
+    <rect width="84" height="84" fill="#DCD8CE"/>
+    <circle cx="66" cy="18" r="13" fill="#CFCABF"/>
+    <g fill="#5C6270">
+      <rect x="20" y="30" width="13" height="38"/>
+      <path d="M13 32h27l-5-7H18Z"/><path d="M11 24h31l-6-7H17Z"/>
+    </g>
+    <g fill="#494F5C">
+      <rect x="44" y="40" width="30" height="28"/>
+      <path d="M39 42h40l-6-9H45Z"/>
+      <rect x="52" y="52" width="6" height="16" fill="#3A404B"/>
+      <rect x="63" y="52" width="6" height="16" fill="#3A404B"/>
+    </g>
+    <ellipse cx="59" cy="48" rx="6" ry="7" fill="#8A5148"/>
+    <rect y="68" width="84" height="16" fill="#C6C1B6"/>
+  </symbol>
+  <symbol id="art-green" viewBox="0 0 84 84">
+    <rect width="84" height="84" fill="#DBE2D6"/>
+    <circle cx="20" cy="16" r="11" fill="#CBD5C4"/>
+    <g fill="#55684E">
+      <circle cx="24" cy="40" r="16"/><rect x="22" y="48" width="4" height="20"/>
+    </g>
+    <g fill="#6E8163">
+      <circle cx="58" cy="34" r="13"/><rect x="56" y="42" width="4" height="26"/>
+      <circle cx="76" cy="45" r="10"/>
+    </g>
+    <rect y="64" width="84" height="20" fill="#C3CDB8"/>
+    <path d="M0 78h84" stroke="#B2BDA6" stroke-width="7"/>
+  </symbol>
+  <symbol id="art-craft" viewBox="0 0 84 84">
+    <rect width="84" height="84" fill="#CFC6B8"/>
+    <rect x="8" y="16" width="68" height="52" fill="#B4A996"/>
+    <rect x="16" y="26" width="24" height="22" fill="#D9C79B"/>
+    <rect x="48" y="26" width="20" height="22" fill="#C4B48D"/>
+    <rect x="8" y="12" width="68" height="10" fill="#3E4A66"/>
+    <g fill="#3E4A66">
+      <rect x="14" y="12" width="4" height="16"/><rect x="36" y="12" width="4" height="16"/>
+      <rect x="58" y="12" width="4" height="16"/>
+    </g>
+    <rect x="30" y="52" width="24" height="16" fill="#6E6152"/>
+    <rect y="68" width="84" height="16" fill="#BDB3A2"/>
+  </symbol>
+  <symbol id="art-food" viewBox="0 0 84 84">
+    <rect width="84" height="84" fill="#E0D3C4"/>
+    <rect x="6" y="14" width="72" height="46" fill="#C2AF9B"/>
+    <ellipse cx="22" cy="28" rx="9" ry="12" fill="#A8564A"/>
+    <path d="M13 24h18M13 30h18" stroke="#8B4239" stroke-width="1.6"/>
+    <rect x="42" y="22" width="30" height="18" fill="#8C7963"/>
+    <rect y="56" width="84" height="12" fill="#6B5546"/>
+    <rect y="68" width="84" height="16" fill="#C9BAA8"/>
+  </symbol>
   <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 17H5" /><path d="M19 7h-9" /><circle cx="17" cy="17" r="3" /><circle cx="7" cy="7" r="3" /></symbol>
   <symbol id="i-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><path d="M12 17h.01" /></symbol>
   <symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></symbol>
@@ -2644,10 +2704,13 @@ var Draw = {
     if (ctx.moods.indexOf(poi.kind) < 0) return 0;
     if (!isOpen(poi.kind, ctx.now)) return 0;          // 閉まっている種類は引かない
 
-    // 1 · 選んだ時間に合う距離か（目標距離を中心にした山）
+    // 1 · 選んだ時間に合う距離か
     //     許容は目標距離の割合ではなく「±何分」。60分を選んだ人の許容が
     //     15分を選んだ人の4倍に広がってしまうのを避ける。
+    //     帯の外は 0 にする。なだらかな山だけにしておくと、外側の輪ほど
+    //     候補の数が多いので、1件あたりの重みが小さくても合計で勝ってしまう。
     var off = (d - ctx.target) / ctx.tol;
+    if (off < -1 || off > 1) return 0;
     var band = Math.exp(-off * off);
 
     // 2 · 静けさ。混んでいる所は、そもそも引かない
@@ -2666,19 +2729,28 @@ var Draw = {
       if (distanceM(poi, fav) <= fav.radius) favour = Math.max(favour, fav.boost);
     }
 
-    return band * quiet * outward * favour + 0.0001;
+    return band * quiet * outward * favour;
   },
 
   /* 重みつきで n 件、重複なしに引く。1件ずつ引いては母集団から抜く。
      argmax で上位3件を並べるのではないので、同じ条件でも毎回ちがう3枚が出る。 */
   pickMany: function (pois, ctx, n) {
-    var pool = pois.slice(), out = [];
-    for (var i = 0; i < n; i++) {
-      var got = this.pick(pool, ctx);
-      if (!got) break;
-      out.push(got);
-      pool.splice(pool.indexOf(got), 1);
+    var base = ctx.tol, steps = [1, 1.6, 2.4], out = [];
+    ctx.widened = 0;
+    for (var s = 0; s < steps.length; s++) {
+      ctx.tol = base * steps[s];
+      var pool = pois.slice();
+      out = [];
+      for (var i = 0; i < n; i++) {
+        var got = this.pick(pool, ctx);
+        if (!got) break;
+        out.push(got);
+        pool.splice(pool.indexOf(got), 1);
+      }
+      if (out.length >= n) { ctx.widened = s ? Math.round(CONFIG.TOL_MIN * steps[s]) : 0; break; }
+      ctx.widened = Math.round(CONFIG.TOL_MIN * steps[s]);
     }
+    ctx.tol = base;
     return out;
   },
 
@@ -2688,7 +2760,7 @@ var Draw = {
       var w = this.weight(pois[i], ctx);
       if (w > 0) { scored.push({ poi: pois[i], w: w }); total += w; }
     }
-    if (!scored.length) return null;
+    if (!scored.length || total <= 0) return null;
     var r = Math.random() * total;
     for (var j = 0; j < scored.length; j++) {
       r -= scored[j].w;
@@ -2729,7 +2801,7 @@ function teaserOf(poi, used) {
   return set[start];
 }
 
-var KIND_ICON = { culture: "i-temple", green: "i-park", craft: "i-craft", food: "i-food" };
+var KIND_ART = { culture: "art-culture", green: "art-green", craft: "art-craft", food: "art-food" };
 
 /* ════════════════════ 6 · 測位 ════════════════════ */
 
@@ -3388,7 +3460,7 @@ function startWalk() {
   var minutes = selectedMinutes();
   var target = Draw.targetMetres(minutes);
   var tol = Draw.tolMetres();                 // ±7分ぶんの直線距離
-  var max = target + tol * 2.2;               // 2.2σ より外は実質引かれない
+  var max = target + tol * 2.4;               // 帯を広げたときの上限まで
 
   main.classList.remove("detail-on");
   main.classList.add("compass-on");
@@ -3456,11 +3528,11 @@ function showPicks(list) {
       img.loading = "lazy";
       img.addEventListener("error", function () {
         thumb.innerHTML = "";
-        thumb.appendChild(iconSvg(KIND_ICON[poi.kind] || "i-pin"));
+        thumb.appendChild(artSvg(poi.kind));
       });
       thumb.appendChild(img);
     } else {
-      thumb.appendChild(iconSvg(KIND_ICON[poi.kind] || "i-pin"));
+      thumb.appendChild(artSvg(poi.kind));
     }
 
     var body = document.createElement("div");
@@ -3488,9 +3560,15 @@ function showPicks(list) {
   setText("picks-sub",
     n + " of " + countable(pending.pois, pending.ctx) + " candidates, drawn from the quiet side.",
     "候補 " + countable(pending.pois, pending.ctx) + " のなかから " + n + "つ引きました。混んでいる場所は入っていません。");
-  setText("picks-note",
-    "What each one is stays hidden until you arrive.",
-    "どれが何なのかは、着くまでわかりません。");
+  if (pending.ctx.widened) {
+    setText("picks-note",
+      "Not enough places at " + pending.minutes + " min for this mood — widened to \u00b1" + pending.ctx.widened + " min.",
+      "この気分だと" + pending.minutes + "分の帯に候補が足りないので、\u00b1" + pending.ctx.widened + "分まで広げています。");
+  } else {
+    setText("picks-note",
+      "What each one is stays hidden until you arrive.",
+      "どれが何なのかは、着くまでわかりません。");
+  }
 
   $("drawing").hidden = true;
   $("picks").hidden = false;
@@ -3504,10 +3582,13 @@ function countable(pois, ctx) {
   return n;
 }
 
-function iconSvg(id) {
+function artSvg(kind) {
   var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "pick-art");
+  svg.setAttribute("viewBox", "0 0 84 84");
+  svg.setAttribute("aria-hidden", "true");
   var use = document.createElementNS("http://www.w3.org/2000/svg", "use");
-  use.setAttribute("href", "#" + id);
+  use.setAttribute("href", "#" + (KIND_ART[kind] || "art-culture"));
   svg.appendChild(use);
   return svg;
 }
