@@ -2192,9 +2192,13 @@ function moveTowards(from, brg, dist) {
   return { lat: deg(la2), lon: ((deg(lo2) + 540) % 360) - 180 };
 }
 
+/* 残り距離。2km までは m、そこから先は km。
+   1km で切り替えると、45分・60分の散歩はほとんどの時間 km 表示になり、
+   0.1km 刻みでしか動かないので止まって見える。2km なら道中の大半が m
+   表示になって10mごとに動き、後半で km に変わる。 */
 function fmtDistance(m) {
-  if (m >= 1000) return (m / 1000).toFixed(1) + "|km";
-  return Math.round(m / 10) * 10 + "|m";
+  if (m >= 2000) return (m / 1000).toFixed(1) + "|km";
+  return (Math.round(m / 10) * 10).toLocaleString("en-US") + "|m";
 }
 
 var DIR_JA = ["北", "北東", "東", "南東", "南", "南西", "西", "北西"];
@@ -2354,6 +2358,7 @@ var Demo = {
     main.classList.toggle("demo-on", this.on);
     $("demo-switch").setAttribute("aria-checked", String(this.on));
     this.stopWalk();
+    Heading.value = null;                            // 前の向きを持ち越さない
     if (this.on) {
       Loc.stop();                                    // 実測と混ざらないように止める
       if (!Loc.position) this.place(35.7148, 139.7967);   // 既定は浅草寺
@@ -2426,7 +2431,7 @@ var Demo = {
     placeMe(); drawNav(); checkArrival();
   },
   stopWalk: function () {
-    if (this.timer) { clearInterval(this.timer); this.timer = null; }
+    if (this.timer) { clearInterval(this.timer); this.timer = null; Heading.value = null; drawNav(); }
     var b = $("demo-play");
     if (b) { b.setAttribute("data-on", "0"); setText("demo-play", "Walk to it", "行き先まで歩く"); applyLang(); }
   }
@@ -3683,7 +3688,7 @@ function artSvg(kind) {
 }
 
 function fmtDist(m) {
-  return m >= 1000 ? (m / 1000).toFixed(1) + "km" : Math.round(m / 10) * 10 + "m";
+  return fmtDistance(m).replace("|", "");     // 3択のカードも同じ規則で出す
 }
 
 function choosePick(poi) {
@@ -3724,12 +3729,27 @@ function beginNav(origin, dest, minutes, moods, avoid) {
     destCrowd: Crowd.at(dest),
     hintsUsed: 0
   };
+  // デモでは端末の向きが取れないので、自動歩行が進行方向を Heading に入れる。
+  // それが次の散歩まで居残ると、針が前回の方角ぶんずれる。散歩ごとに戻す。
+  if (Demo.on) Heading.value = null;
+  needleAngle = 0;
+
   $("drawing").hidden = true;
   $("hint-card").classList.remove("is-open");
   $("hint-count").textContent = CONFIG.HINTS;
   renderHints();
   drawNav();
   checkArrival();
+}
+
+/* 針は角度を足しこんで回す。359°から1°へ動くとき、そのまま値を入れると
+   0.25秒かけて358°ぶん逆回りする。差を -180〜180 に畳んでから足せば、
+   いつでも近いほうへ回る。 */
+var needleAngle = 0;
+function setNeedle(rot) {
+  var delta = ((rot - needleAngle) % 360 + 540) % 360 - 180;
+  needleAngle += delta;
+  $("needle").setAttribute("transform", "rotate(" + needleAngle.toFixed(1) + " 150 150)");
 }
 
 function drawNav() {
@@ -3745,8 +3765,7 @@ function drawNav() {
   $("cmp-bearing").innerHTML = ("00" + Math.round(bearing)).slice(-3) + "<i>°</i>";
 
   // 針。方位が取れているときは端末の向きを引き、取れないときは北を上に固定する。
-  var rot = Heading.value === null ? bearing : bearing - Heading.value;
-  $("needle").setAttribute("transform", "rotate(" + rot.toFixed(1) + " 150 150)");
+  setNeedle(Heading.value === null ? bearing : bearing - Heading.value);
 
   if (Heading.value === null) {
     setText("cmp-hidden", "Destination hidden", "行き先は ひみつ");
