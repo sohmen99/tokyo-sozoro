@@ -1946,11 +1946,20 @@
                 <!-- walk progress -->
                 <circle cx="150" cy="150" r="142" fill="none" stroke="#35B79A" stroke-width="2"
                         stroke-dasharray="892" stroke-dashoffset="892" transform="rotate(-90 150 150)" stroke-linecap="round" id="progress-ring"/>
+                <!-- 針は片側だけ。反対の端はただの重りで、追う先とまちがえないように短く暗くする。 -->
                 <g id="needle" style="transition:transform .25s ease-out">
-                  <path d="M150 32 L158 152 L150 144 L142 152 Z" fill="#35B79A"/>
-                  <path d="M150 268 L142 148 L150 156 L158 148 Z" fill="#3B434F"/>
+                  <path d="M150 172 L142 196 L158 196 Z" fill="#3B434F"/>
+                  <path d="M150 150 L150 196" stroke="#3B434F" stroke-width="3" stroke-linecap="round"/>
+                  <path d="M150 150 L150 62" stroke="#35B79A" stroke-width="5" stroke-linecap="round"/>
+                  <path d="M150 22 L167 66 L150 58 L133 66 Z" fill="#35B79A"/>
+                  <circle cx="150" cy="86" r="4" fill="#0E1116" stroke="#35B79A" stroke-width="2"/>
+                  <path d="M150 12 L150 4" stroke="#35B79A" stroke-width="3" stroke-linecap="round"/>
+                  <!-- 文字は針と一緒に回すと逆さになる。回した分を打ち消して立てておく。 -->
+                  <g id="needle-label"><text x="150" y="116" text-anchor="middle"
+                     font-family="ui-monospace, monospace" font-size="9" letter-spacing="1.6"
+                     fill="#35B79A" data-en="THIS WAY" data-ja="こっち">THIS WAY</text></g>
                 </g>
-                <circle cx="150" cy="150" r="3.5" fill="#35B79A"/>
+                <circle cx="150" cy="150" r="4" fill="#0E1116" stroke="#35B79A" stroke-width="2"/>
               </svg>
             </div>
 
@@ -4032,6 +4041,8 @@ function setNeedle(rot) {
   var delta = ((rot - needleAngle) % 360 + 540) % 360 - 180;
   needleAngle += delta;
   $("needle").setAttribute("transform", "rotate(" + needleAngle.toFixed(1) + " 150 150)");
+  // 文字だけ回した分を戻して、いつでも読める向きにしておく
+  $("needle-label").setAttribute("transform", "rotate(" + (-needleAngle).toFixed(1) + " 150 116)");
 }
 
 function drawNav() {
@@ -4057,8 +4068,8 @@ function drawNav() {
   } else {
     setText("cmp-hidden", "Destination hidden", "行き先は ひみつ");
     setText("cmp-sub",
-      "Something quiet, " + DIR_EN[di] + " of here.",
-      "この" + DIR_JA[di] + "に、静かなものが。");
+      "Follow the green tip. Something quiet, " + DIR_EN[di] + " of here.",
+      "緑の先を追ってください。この" + DIR_JA[di] + "に、静かなものが。");
   }
 
   // 進捗リング
