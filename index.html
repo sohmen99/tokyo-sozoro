@@ -4174,9 +4174,8 @@ function renderHints() {
   if (walk.hintsUsed >= 1) {
     lines.push(["What it is", "なにがある", lang === "ja" ? walk.dest.kindJa : walk.dest.kindEn]);
   }
+  // 2回目は頭の一文字だけ。混み具合は推定なので、探す手がかりにはならない。
   if (walk.hintsUsed >= 2) {
-    var v = Crowd.at(walk.dest);
-    lines.push(["How busy", "混み具合", "~" + v + "% " + (lang === "ja" ? "（ピーク比・予想）" : "of peak, estimated")]);
     lines.push(["First letter", "頭の一文字", (walk.dest.name || "?").slice(0, 1) + "…"]);
   }
   if (!lines.length) {
