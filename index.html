@@ -583,6 +583,12 @@
 
   /* 引き出し。開閉は transform だけで動かし、中身の高さは変えない。
      高さが変わると掴んでいる途中で行き先が動いてしまうため。 */
+  /* 中身が増えて画面に収まらなくなっても、送れるようにしておく。
+     収まらないまま固定すると、下のボタンに指が届かなくなる。 */
+  .sheet-inner {
+    max-height: calc(var(--stage-h, 874px) - 148px);
+    overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+  }
   .sheet {
     position: absolute; left: 0; right: 0; bottom: 0;
     background: var(--washi);
@@ -1211,8 +1217,16 @@
   .mode svg { grid-row: 1 / 3; align-self: start; margin-top: 2px; color: var(--muted); }
   .mode b { font-size: 14px; font-weight: 650; letter-spacing: .01em; }
   .mode span { font-size: 11.5px; line-height: 1.6; color: var(--muted); }
-  .mode[aria-pressed="true"] { border-color: var(--ai); background: var(--ai-wash, #F2F6FF); }
-  .mode[aria-pressed="true"] svg { color: var(--ai); }
+  .mode[aria-pressed="false"] { opacity: .62; }
+  .mode[aria-pressed="true"] {
+    border-color: var(--ink); border-width: 2px; padding: 10px 12px;
+    background: var(--ink); color: var(--white);
+  }
+  .mode[aria-pressed="true"] svg { color: var(--white); }
+  .mode[aria-pressed="true"] span { color: rgba(255,255,255,0.72); }
+  .mode[aria-pressed="true"] b::after {
+    content: "\2713"; margin-left: 8px; font-size: 12px; opacity: .9;
+  }
   .mode[disabled] { opacity: .42; cursor: not-allowed; }
   .mode:focus-visible { outline: 2px solid var(--ai); outline-offset: 2px; }
   .mode-note { margin: 8px 0 0; font-size: 11.5px; line-height: 1.6; color: var(--muted); }
@@ -3574,13 +3588,14 @@ function wanderCount() {
 function refreshModes() {
   var n = wanderCount(), w = document.querySelector('#modes [data-mode="wander"]');
   if (!w) return;
+  // 押した選択を勝手に戻さない。戻すと「押せない」ようにしか見えないので、
+  // 塞がずに理由だけ書いて、引けなかったときはその場で言う。
   var thin = (n !== null && n < 3);
-  w.disabled = thin;
-  if (thin && selectedMode() === "wander") setMode("throughline");
+  w.disabled = false;
   var note = $("mode-note");
   if (thin) {
-    note.setAttribute("data-en", "Too few places within 15 minutes of here to wander. Cross town instead — it works from anywhere.");
-    note.setAttribute("data-ja", "ここから15分の範囲に、あてもなく歩けるだけの場所がありません。向こうまで抜けるほうはどこからでも歩けます。");
+    note.setAttribute("data-en", "Only " + n + " within 15 minutes of here. Cross town works from anywhere.");
+    note.setAttribute("data-ja", "ここから15分の範囲には" + n + "か所しかありません。向こうまで抜けるほうはどこからでも歩けます。");
   } else {
     note.setAttribute("data-en", ""); note.setAttribute("data-ja", "");
   }
