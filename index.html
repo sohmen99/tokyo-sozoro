@@ -1594,7 +1594,7 @@
           <!-- ── map ── -->
           <div class="map-viewport" id="viewport">
             <div class="map-canvas" id="canvas">
-              <svg viewBox="0 0 402 874" aria-label="上野・浅草を中心とした広域図。混雑度つき">
+              <svg viewBox="0 0 402 874" aria-label="上野・浅草を中心とした広域図。混雑の予想つき">
                 <defs>
                   <clipPath id="cp-ward"><path id="clip-ward-path"/></clipPath>
                   <filter id="f-heat" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="26"/></filter>
@@ -1677,7 +1677,7 @@
             <h4 class="label-mono" data-en="How to play" data-ja="あそびかた">How to play</h4>
             <div class="pop-row" style="display:block; padding-bottom:2px;">
               <ol>
-                <li data-en="Tap a red marker to see how busy it is and when it clears." data-ja="赤いマーカーを押すと、混雑度と空く時間がわかります。">Tap a red marker to see how busy it is and when it clears.</li>
+                <li data-en="Tap a red marker for the crowd estimate and when it clears." data-ja="赤いマーカーを押すと、混雑の予想と空く時間がわかります。">Tap a red marker to see how busy it is and when it clears.</li>
                 <li data-en="Set your mood and how long you want to walk, then draw." data-ja="気分と歩きたい時間を選んで、抽選します。">Set your mood and how long you want to walk, then draw.</li>
                 <li data-en="We pick a quiet spot and keep it secret. Walk toward the needle." data-ja="空いている場所を抽選し、行き先は伏せます。針の向く方へ。">We pick a quiet spot and keep it secret. Walk toward the needle.</li>
               </ol>
@@ -1745,7 +1745,7 @@
           <!-- ── legend + scale ── -->
           <div class="map-foot" id="map-foot">
             <div class="legend">
-              <span class="label-mono" data-en="Crowd now" data-ja="いまの混雑">Crowd now</span>
+              <span class="label-mono" data-en="Crowd, estimated" data-ja="混雑の予想">Crowd, estimated</span>
               <ul>
                 <li><i style="background:var(--quiet)"></i><span data-en="Quiet" data-ja="空">Quiet</span></li>
                 <li><i style="background:var(--mid)"></i><span data-en="Busy" data-ja="やや混">Busy</span></li>
@@ -1878,7 +1878,7 @@
                 <div class="now-strip">
                   <div>
                     <div class="big" id="d-now">—</div>
-                    <div class="label-mono" style="margin-top:6px" data-en="Of peak" data-ja="ピーク比">Of peak</div>
+                    <div class="label-mono" style="margin-top:6px" data-en="Of peak · estimate" data-ja="ピーク比・予想">Of peak · estimate</div>
                   </div>
                   <span class="vr"></span>
                   <div style="flex:1">
@@ -1899,7 +1899,7 @@
 
                 <div class="chart-head">
                   <span class="chart-title" data-en="Crowd through today" data-ja="今日の混み具合">Crowd through today</span>
-                  <span class="label-mono" style="font-size:9px" data-en="% of peak" data-ja="ピーク比 %">% of peak</span>
+                  <span class="label-mono" style="font-size:9px" data-en="% of peak (estimated)" data-ja="ピーク比 %（予想）">% of peak (estimated)</span>
                 </div>
                 <div class="chart" id="chart"></div>
                 <div class="chart-axis" id="chart-axis"></div>
@@ -2098,7 +2098,6 @@
           <div class="res-stats">
             <div><div class="v" id="res-walked">—</div><div class="k" data-en="Walked" data-ja="歩いた">歩いた</div></div>
             <div><div class="v" id="res-points">—</div><div class="k" data-en="Points" data-ja="ポイント">ポイント</div></div>
-            <div class="win"><div class="v" id="res-quiet">—</div><div class="k" data-en="Quieter" data-ja="空いてた">空いてた</div></div>
           </div>
 
           <div class="res-badge">
@@ -3437,8 +3436,8 @@ function refreshCrowd() {
   if (plate && busiest) {
     var lv = Crowd.level(busiest.now);
     plate.className = "live lv-" + lv;
-    plate.setAttribute("data-en", busiest.en + " " + busiest.now + "% of peak");
-    plate.setAttribute("data-ja", busiest.ja + " ピーク比 " + busiest.now + "%");
+    plate.setAttribute("data-en", busiest.en + " ~" + busiest.now + "% of peak (est.)");
+    plate.setAttribute("data-ja", busiest.ja + " ピーク比 およそ" + busiest.now + "%（予想）");
     plate.textContent = lang === "ja" ? plate.getAttribute("data-ja") : plate.getAttribute("data-en");
   }
   updateSheetFoot();
@@ -3487,7 +3486,10 @@ function openDetail(spot) {
   detailFor = spot;
   closePops();
   var v = Crowd.at(spot), lv = Crowd.level(v);
-  var word = { busy: ["Packed right now", "いま 混雑"], mid: ["Fairly busy", "いま やや混雑"], quiet: ["Quiet right now", "いま 空いている"] };
+  // 断定しない。実測なのは広域の人出だけで、地点ごとの数字は推定。
+  var word = { busy:  ["Probably packed", "混雑していそう"],
+               mid:   ["Probably fairly busy", "やや混んでいそう"],
+               quiet: ["Probably quiet", "空いていそう"] };
   var chip = { busy: ["Packed", "混雑"], mid: ["Busy", "やや"], quiet: ["Quiet", "空き"] };
 
   setText("d-name", spot.en, spot.ja);
@@ -3499,16 +3501,16 @@ function openDetail(spot) {
 
   var clears = Crowd.clearsAt(spot);
   if (clears !== null) {
-    setText("d-clears", "Clears from about " + clears + ":00", clears + ":00ごろから 空きはじめる");
+    setText("d-clears", "Should clear from about " + clears + ":00", clears + ":00ごろから 空きはじめる見込み");
     setText("d-clears-sub",
       "The draw already prefers the quiet side of the map.",
       "抽選は、いま空いている側から先に選びます。");
   } else if (v < 40) {
-    setText("d-clears", "Quiet already", "いまは 空いています");
+    setText("d-clears", "Quiet already, by our estimate", "いまでも 空いている見込み");
     setText("d-clears-sub", "Good time to be here — or to walk somewhere further out.",
                             "いま来るならこの時間。もっと外まで歩いてもいい頃です。");
   } else {
-    setText("d-clears", "Stays busy for the rest of today", "今日はこのあとも混雑がつづきます");
+    setText("d-clears", "Likely busy for the rest of today", "今日はこのあとも混んでいそうです");
     setText("d-clears-sub", "Walking out is the faster option.", "歩いて外へ出るほうが早いです。");
   }
   var ff = Math.round(Crowd.footfall(spot, [0, 6].indexOf(Crowd.now().getDay()) >= 0) * 100);
@@ -4145,7 +4147,7 @@ function renderHints() {
   }
   if (walk.hintsUsed >= 2) {
     var v = Crowd.at(walk.dest);
-    lines.push(["How busy", "混み具合", v + "% " + (lang === "ja" ? "（ピーク比）" : "of peak")]);
+    lines.push(["How busy", "混み具合", "~" + v + "% " + (lang === "ja" ? "（ピーク比・予想）" : "of peak, estimated")]);
     lines.push(["First letter", "頭の一文字", (walk.dest.name || "?").slice(0, 1) + "…"]);
   }
   if (!lines.length) {
@@ -4286,7 +4288,6 @@ function arrive() {
 
   $("res-walked").innerHTML = (walked / 1000).toFixed(1) + "<i>km</i>";
   $("res-points").textContent = "+" + Math.max(0, points);
-  $("res-quiet").innerHTML = (100 - w.destCrowd) + "<i>%</i>";
 
   // 今回あらたに取れた印があれば、それを見せる
   var fresh = REWARDS.filter(function (r) { return after[r.id] && !before[r.id]; });
@@ -4302,10 +4303,8 @@ function arrive() {
     setText("res-badge", "Walk " + all.length + " · " + got + " of " + REWARDS.length + " stamps",
                          all.length + "回目 · 印は " + got + " / " + REWARDS.length);
     setText("res-badge-sub",
-      "Average " + Math.round(all.reduce(function (a, b) { return a + (b.dispersion || 0); }, 0) / all.length) +
-        " points quieter than where you set off",
-      "出発地点より平均 " + Math.round(all.reduce(function (a, b) { return a + (b.dispersion || 0); }, 0) / all.length) +
-        "ポイント 空いている場所へ");
+      all.length + (all.length === 1 ? " walk so far" : " walks so far"),
+      "ここまで " + all.length + "回");
   }
 
   $("res-map").href = "https://www.openstreetmap.org/?mlat=" + w.dest.lat + "&mlon=" + w.dest.lon +
@@ -4660,12 +4659,11 @@ var KIND_MARK = { culture: "i-temple", green: "i-park", food: "i-food" };
 
 function shareText(w) {
   var km = ((w.walked || 0) / 1000).toFixed(1);
-  var q = 100 - (w.destCrowd || 0);
   return lang === "ja"
     ? "「" + (w.dest.name || "なんでもない場所") + "」に着きました。\n" +
-      km + "km 歩いて、出発地点より " + q + "% 空いている場所へ。\n#Tokyosozoro"
+      km + "km 歩いて、行き先は着くまで伏せたまま。\n#Tokyosozoro"
     : "Arrived at " + (w.dest.name || "nowhere in particular") + ".\n" +
-      km + " km on foot, to somewhere " + q + "% quieter than where I set off.\n#Tokyosozoro";
+      km + " km on foot, and I did not know where until I got there.\n#Tokyosozoro";
 }
 
 /* 共有用の画像を1枚描く。文字だけだと流れないので。 */
@@ -4673,7 +4671,6 @@ function shareCard(w) {
   var c = $("share-canvas"), g = c.getContext("2d");
   var W = c.width, H = c.height;
   var km = ((w.walked || 0) / 1000).toFixed(1);
-  var quiet = 100 - (w.destCrowd || 0);
   var ja = lang === "ja";
 
   g.fillStyle = "#20242B"; g.fillRect(0, 0, W, H);
@@ -4715,8 +4712,7 @@ function shareCard(w) {
     g.fillStyle = "#8E96A4"; g.font = "400 36px system-ui, sans-serif";
     g.fillText(small, x, 908);
   }
-  stat(W * 0.28, km + "km", ja ? "歩いた" : "walked");
-  stat(W * 0.72, quiet + "%", ja ? "空いてた" : "quieter");
+  stat(W / 2, km + "km", ja ? "歩いた" : "walked");
 
   g.fillStyle = "#8E96A4"; g.font = "400 34px system-ui, sans-serif";
   var seal = $("res-badge") ? ($("res-badge").textContent || "") : "";
