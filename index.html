@@ -237,17 +237,22 @@
   .btn:focus-visible { outline: 2px solid var(--ai-light); outline-offset: 2px; }
   .btn-primary { width: 100%; background: var(--ai); color: var(--white); }
   .btn-primary:hover { background: var(--ai-deep); }
+  /* 押せるもの。地の色に沈まないよう、面と枠の両方を持たせる。
+     枠だけの薄いボタンは、押せるのかどうかが読めない。 */
   .btn-quiet {
     width: 100%;
-    background: transparent;
-    color: var(--ink-2);
+    background: var(--washi-2);
+    color: var(--ink);
     border-color: var(--hairline);
   }
   .btn-quiet:hover { background: var(--washi-2); }
   .on-sumi .btn-primary { background: var(--washi); color: var(--sumi); }
   .on-sumi .btn-primary:hover { background: var(--white); }
-  .on-sumi .btn-quiet { color: #A9B1BE; border-color: var(--hairline-dk); }
-  .on-sumi .btn-quiet:hover { background: rgba(255,255,255,0.06); }
+  .on-sumi .btn-quiet { background: var(--sumi-3); color: #FFFFFF; border-color: rgba(255,255,255,0.22); }
+  .on-sumi .btn-quiet:hover { background: #303743; }
+  /* 下がる・やめる。控えめだが、枠は必ずある */
+  .btn-back { width: 100%; background: transparent; color: #8E96A4; border-color: var(--hairline-dk); font-size: 13.5px; padding: 13px 18px; }
+  .btn-back:hover { background: rgba(255,255,255,0.05); }
 
   .label-mono {
     font-family: var(--font-mono);
@@ -1668,8 +1673,8 @@
             <div class="pop-row"><span data-en="Distance" data-ja="距離の単位">Distance</span><span style="font-family:var(--font-mono);color:var(--muted)">km</span></div>
             <div class="pop-row"><span data-en="Buzz on arrival" data-ja="到着時のバイブ">Buzz on arrival</span><span style="color:var(--quiet)" data-en="On" data-ja="オン">On</span></div>
             <div class="pop-row">
-              <span data-en="Demo mode" data-ja="デモモード">Demo mode</span>
-              <button class="switch" id="demo-switch" role="switch" aria-checked="false" aria-label="デモモード"></button>
+              <span data-en="Simulation mode" data-ja="シミュレーションモード">Simulation mode</span>
+              <button class="switch" id="demo-switch" role="switch" aria-checked="false" aria-label="シミュレーションモード"></button>
             </div>
           </div>
 
@@ -1697,8 +1702,8 @@
           <!-- 確認用。場所と時刻を自由に置ける -->
           <div class="demo" id="demo" hidden>
             <div class="demo-head">
-              <span class="label-mono" data-en="Demo" data-ja="デモ">デモ</span>
-              <button class="demo-x" id="demo-off" aria-label="デモモードを終わる"><svg width="14" height="14"><use href="#i-close"/></svg></button>
+              <span class="label-mono" data-en="Simulation" data-ja="シミュレーション">Simulation</span>
+              <button class="demo-x" id="demo-off" aria-label="シミュレーションモードを終わる"><svg width="14" height="14"><use href="#i-close"/></svg></button>
             </div>
             <div class="demo-row">
               <span class="k" data-en="Time" data-ja="時刻">時刻</span>
@@ -1954,10 +1959,6 @@
                   <path d="M150 22 L167 66 L150 58 L133 66 Z" fill="#35B79A"/>
                   <circle cx="150" cy="86" r="4" fill="#0E1116" stroke="#35B79A" stroke-width="2"/>
                   <path d="M150 12 L150 4" stroke="#35B79A" stroke-width="3" stroke-linecap="round"/>
-                  <!-- 文字は針と一緒に回すと逆さになる。回した分を打ち消して立てておく。 -->
-                  <g id="needle-label"><text x="150" y="116" text-anchor="middle"
-                     font-family="ui-monospace, monospace" font-size="9" letter-spacing="1.6"
-                     fill="#35B79A" data-en="THIS WAY" data-ja="こっち">THIS WAY</text></g>
                 </g>
                 <circle cx="150" cy="150" r="4" fill="#0E1116" stroke="#35B79A" stroke-width="2"/>
               </svg>
@@ -4133,6 +4134,12 @@ function drawNav() {
 
   // 針。方位が取れているときは端末の向きを引き、取れないときは北を上に固定する。
   setNeedle(Heading.value === null ? bearing : bearing - Heading.value);
+
+  // 見出しの2行は「あてもなく」だけ。駅まで抜けるコースの寄り道は静けさで
+  // 選んでいないので、「静かなものが」が嘘になる。
+  var solo = !route;
+  $("cmp-hidden").hidden = !solo;
+  $("cmp-sub").hidden = !solo;
 
   if (Heading.value === null) {
     setText("cmp-hidden", "Destination hidden", "行き先は ひみつ");
