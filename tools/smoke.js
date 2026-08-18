@@ -85,7 +85,8 @@ if (ok) {
                 ["res-home","click"],["btn-settings","click"],["btn-help","click"],
                 ["zoom-in","click"],["zoom-out","click"],["locate","click"],
                 ["btn-gallery","click"],["gal-back","click"],["res-gallery","click"],
-                ["picks-redraw","click"],["picks-cancel","click"],["res-share","click"],["res-keep","click"]];
+                ["picks-redraw","click"],["picks-cancel","click"],["res-share","click"],["res-keep","click"],
+                ["btn-arrive","click"]];
   const missing = want.filter(([id,ev]) => !listeners[id] || !listeners[id][ev]).map(([id,ev])=>id+":"+ev);
   console.log("クリック待受:", missing.length ? "付いていない → " + missing.join(", ") : "全" + want.length + "個 OK");
 
@@ -94,7 +95,8 @@ if (ok) {
   for (const [id,e] of [["cover-start","click"],["btn-cover","click"],["sheet-grip","pointerdown"],["sheet-grip","pointerup"],
                         ["sheet-peek","pointerdown"],["zoom-in","click"],["zoom-out","click"],["btn-settings","click"],
                         ["btn-help","click"],["res-home","click"],["btn-gallery","click"],["res-gallery","click"],
-                        ["picks-cancel","click"],["picks-redraw","click"],["res-share","click"]]) {
+                        ["picks-cancel","click"],["picks-redraw","click"],["res-share","click"],
+                        ["btn-arrive","click"]]) {
     try { listeners[id][e](ev); }
     catch (err) { ok = false; console.log("  " + id + "." + e + " で例外 →", err.message); }
   }

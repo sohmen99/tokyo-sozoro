@@ -1978,10 +1978,15 @@
                 <span class="count" id="hint-count">2</span>
               </button>
               <div class="hint-card" id="hint-card">
-                <div class="tbd" data-en="Hints — draft content" data-ja="ヒント — 中身は仮">ヒント — 中身は仮</div>
+                <div class="tbd" data-en="Two hints. Spend them when you are lost enough to want one."
+                     data-ja="ヒントは2回。迷って欲しくなったら使ってください。">ヒントは2回。</div>
                 <div class="hint-body" id="hint-body"></div>
               </div>
             </div>
+
+            <button class="btn btn-primary" id="btn-arrive" style="width:100%;margin-top:14px">
+              <span id="btn-arrive-label" data-en="I'm here" data-ja="ここにいます">ここにいます</span>
+            </button>
 
             <p class="cmp-foot"><span class="dot"></span><span id="cmp-foot-text" data-en="—" data-ja="—">—</span></p>
           </div>
@@ -4089,6 +4094,15 @@ function drawNav() {
 
   var parts = fmtDistance(remaining).split("|");
   $("cmp-dist").innerHTML = parts[0] + "<i>" + parts[1] + "</i>";
+
+  // 着いていれば「着きました」に変える。押す前に分かるように。
+  var here = Loc.position && distanceM(Loc.position, walk.dest) <= CONFIG.ARRIVAL_M;
+  var lab = $("btn-arrive-label");
+  if (lab) {
+    lab.setAttribute("data-en", here ? "You made it" : "I'm here");
+    lab.setAttribute("data-ja", here ? "着きました" : "ここにいます");
+    lab.textContent = lang === "ja" ? lab.getAttribute("data-ja") : lab.getAttribute("data-en");
+  }
   var mins = Math.max(1, Math.round(remaining * CONFIG.DETOUR / CONFIG.WALK_SPEED));
   $("cmp-mins").innerHTML = mins + "<i>min</i>";
   $("cmp-bearing").innerHTML = ("00" + Math.round(bearing)).slice(-3) + "<i>°</i>";
@@ -4150,6 +4164,21 @@ function renderHints() {
 }
 
 /* ════════════════════ 13 · 到着 ════════════════════ */
+
+/* 「ここにいます」。GPSが甘い日や屋内では自動判定が働かないので、
+   自分で終えられる口をひとつ置く。ただし黙って終わると散歩が壊れるので、
+   まだ遠いときは、どれだけ手前かを言って確かめる。 */
+function arriveByHand() {
+  if (!walk) return;
+  var left = Loc.position ? Math.round(distanceM(Loc.position, walk.dest)) : null;
+  if (left !== null && left > CONFIG.ARRIVAL_M) {
+    var msg = lang === "ja"
+      ? "まだ " + left + "m あります。ここで終えると到着あつかいになります。それでも終えますか？"
+      : "You are still " + left + " m away. Ending here counts as arriving. Do it anyway?";
+    if (!confirm(msg)) return;
+  }
+  arrive();
+}
 
 function checkArrival() {
   if (!walk || !Loc.position) return;
@@ -4470,6 +4499,8 @@ $("btn-back").addEventListener("click", function () {
   Loc.start(function () { setLoc("ready"); placeMe(); },
             function (e) { setLoc("error", Loc.message(e)); });
 });
+
+$("btn-arrive").addEventListener("click", arriveByHand);
 
 $("btn-hint").addEventListener("click", function () {
   if (!walk) return;
