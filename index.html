@@ -3817,25 +3817,35 @@ var Route = {
     // 1区間は徒歩15±7分。22分を超えたらもう一つ割る。
     var legs = Math.max(1, Math.min(3, Math.ceil(pick.mins / (CONFIG.LEG_MIN + CONFIG.TOL_MIN))));
     var stops = [], used = {};
+    // 直前の地点。近すぎる寄り道は置かない。3分で着く区間は散歩にならない。
+    var prev = origin;
     for (var i = 1; i < legs; i++) {
       var f = i / legs;
       var at = { lat: origin.lat + (pick.st.lat - origin.lat) * f,
                  lon: origin.lon + (pick.st.lon - origin.lon) * f };
+      // 500mで見つからない中間点がある（秋葉原・白山・春日の方向）。
+      // 黙って寄り道を落とすと約束した区間数と食い違うので、一段広げてから諦める。
       var best = null;
-      for (var c = 0; c < CULTURE.length; c++) {
-        if (used[c] || !visitable(CULTURE[c][0])) continue;
-        var p = { lat: CULTURE[c][1], lon: CULTURE[c][2] };
-        var d = distanceM(at, p);
-        if (d > 500) continue;
-        if (!best || d < best.d) best = { d: d, i: c };
+      var limits = [500, 900];
+      for (var li = 0; li < limits.length && !best; li++) {
+        for (var c = 0; c < CULTURE.length; c++) {
+          if (used[c] || !visitable(CULTURE[c][0])) continue;
+          var p = { lat: CULTURE[c][1], lon: CULTURE[c][2] };
+          var d = distanceM(at, p);
+          if (d > limits[li] || distanceM(prev, p) < CONFIG.MIN_M) continue;
+          if (!best || d < best.d) best = { d: d, i: c };
+        }
       }
       if (!best) continue;
       used[best.i] = 1;
+      prev = { lat: CULTURE[best.i][1], lon: CULTURE[best.i][2] };
       var r = CULTURE[best.i];
       stops.push({ src: "bunkazai", id: "c/" + best.i, name: r[0], lat: r[1], lon: r[2],
                    kind: "culture", kindEn: "Shrine, temple or landmark", kindJa: r[3] || "文化財",
                    pop: 0.32, isStation: false });
     }
+    // 最後の寄り道が駅のすぐ隣なら、寄り道のほうを落とす。
+    if (stops.length && distanceM(stops[stops.length - 1], pick.st) < CONFIG.MIN_M) stops.pop();
     stops.push({ src: "station", id: "st/" + pick.st.name, name: pick.st.name,
                  lat: pick.st.lat, lon: pick.st.lon, kind: "culture",
                  kindEn: "Station — your way home", kindJa: "駅・帰り道",
