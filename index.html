@@ -1704,8 +1704,8 @@
                   data-ja="国土交通省 全国の人流オープンデータ（1kmメッシュ・2019年10月）— 混雑の実測層">—</li>
               <li data-en="Cultural property registers of Arakawa, Sumida, Koto, Chiyoda and Chuo (Tokyo open data catalogue)"
                   data-ja="荒川区・墨田区・江東区・千代田区・中央区 文化財一覧（東京都オープンデータカタログ）">—</li>
-              <li data-en="OpenStreetMap contributors (ODbL) — food, green, sights and the basemap. Bundled, so the app needs no network."
-                  data-ja="OpenStreetMap contributors（ODbL）— たべもの・みどり・見どころ・地図。ファイルに取り込んであるので通信は要りません。">—</li>
+              <li data-en="OpenStreetMap contributors (ODbL) — the basemap and the stations. Bundled, so the app needs no network."
+                  data-ja="OpenStreetMap contributors（ODbL）— 地図と駅。ファイルに取り込んであるので通信は要りません。">—</li>
             </ul>
           </div>
 
@@ -1796,7 +1796,6 @@
                 <div class="chips" id="chips">
                   <button class="chip" aria-pressed="true"><svg width="18" height="18"><use href="#i-food"/></svg><span data-en="Something to eat" data-ja="たべもの">Something to eat</span></button>
                   <button class="chip" aria-pressed="true"><svg width="18" height="18"><use href="#i-temple"/></svg><span data-en="Something old" data-ja="古いもの">Something old</span></button>
-                  <button class="chip" aria-pressed="true"><svg width="18" height="18"><use href="#i-park"/></svg><span data-en="Somewhere green" data-ja="みどり">Somewhere green</span></button>
                 </div>
               </div>
 
@@ -2442,9 +2441,9 @@ var REWARDS = [
   { id:"dusk",    icon:"i-moon",     ja:"夜の人",     en:"Night walker",
     cja:"19時より後に 着いた",            cen:"Arrived after 19",
     test:function(t){ return t.dusk >= 1; } },
-  { id:"moods3",  icon:"i-grid",     ja:"三つの気分", en:"All three moods",
-    cja:"3つの気分すべてで 着いた",        cen:"Arrived on food, on something old and on green",
-    test:function(t){ return t.kinds >= 3; } },
+  { id:"moods2",  icon:"i-grid",     ja:"二つの気分", en:"Both moods",
+    cja:"2つの気分どちらでも 着いた",      cen:"Arrived on food and on something old",
+    test:function(t){ return t.kinds >= 2; } },
   { id:"regular", icon:"i-calendar", ja:"常連",       en:"Regular",
     cja:"別々の3日に あるいた",           cen:"Walked on three days",
     test:function(t){ return t.days >= 3; } }
@@ -2706,8 +2705,6 @@ var CATEGORIES = {
     '["tourism"~"^(attraction|artwork|viewpoint|museum|gallery)$"]["name"]',
     '["historic"]["name"]',
     '["amenity"="place_of_worship"]["name"]' ] },
-  green:   { chip: 2, en: "Green",   ja: "みどり",    filters: [
-    '["leisure"~"^(park|garden)$"]["name"]' ] },
 };
 
 
@@ -2716,7 +2713,6 @@ var CATEGORIES = {
 var OPEN_HOURS = {
   food:    [8, 22],   // 飲食
   culture: null,      // 寺社・文化財。門の外からでも成立する
-  green:   null       // 公園・庭園
 };
 
 function isOpen(kind, when) {
@@ -3571,7 +3567,7 @@ function chipKey(i) {
 }
 
 function selectedMoods() {
-  var out = [], keys = ["food", "culture", "green"];
+  var out = [], keys = ["food", "culture"];
   document.querySelectorAll("#chips .chip").forEach(function (b, i) {
     if (b.getAttribute("aria-pressed") === "true" && keys[i]) out.push(keys[i]);
   });
@@ -3931,7 +3927,7 @@ function keepGoing() {
   $("drawing").hidden = false;
 
   var origin = { lat: Loc.position.lat, lon: Loc.position.lon };
-  var moods = selectedMoods(); if (!moods.length) moods = ["food", "culture", "green"];
+  var moods = selectedMoods(); if (!moods.length) moods = ["food", "culture"];
   var target = Draw.targetMetres(CONFIG.LEG_MIN), tol = Draw.tolMetres();
   var visited = Store.visitedIds();
   chain.stops.forEach(function (id) { visited.add(id); });
